@@ -1,0 +1,31 @@
+:root {
+   box-sizing: border-box;
+}
+
+*, *:after, *:before {
+   box-sizing: inherit;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+#render-area {
+  width: 100dvw;
+  height: 100dvh;
+}
+
+#render-area zoomable-view::part(container) {
+  width: 100%;
+  height: 100%;
+}
+
+#clock {
+  color: #fff;
+  text-shadow: 2px 2px 3px #000;
+  font-size: 4rem;
+  font-family: monospace;
+}
+
