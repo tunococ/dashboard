@@ -15,8 +15,8 @@ importers:
         specifier: ~5.7.2
         version: 5.7.3
       vite:
-        specifier: ^6.3.1
-        version: 6.3.3
+        specifier: ^6.3.5
+        version: 6.3.5
 
 packages:
 
@@ -349,8 +349,8 @@ packages:
     peerDependencies:
       browserslist: '>= 4.21.0'
 
-  vite@6.3.3:
-    resolution: {integrity: sha512-5nXH+QsELbFKhsEfWLkHrvgRpTdGJzqOZ+utSdmPTvwHmvU6ITTm3xx+mRusihkcI8GeC7lCDyn3kDtiki9scw==}
+  vite@6.3.5:
+    resolution: {integrity: sha512-cZn6NDFE7wdTpINgs++ZJ4N49W2vRp8LCKrn3Ob1kYNtOo21vfDoaV5GzBfLU4MovSAB8uNRm4jgzVQZ+mBzPQ==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
     peerDependencies:
@@ -631,7 +631,7 @@ snapshots:
       escalade: 3.2.0
       picocolors: 1.1.1
 
-  vite@6.3.3:
+  vite@6.3.5:
     dependencies:
       esbuild: 0.25.3
       fdir: 6.4.4(picomatch@4.0.2)

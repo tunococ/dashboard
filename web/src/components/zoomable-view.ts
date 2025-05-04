@@ -4,9 +4,9 @@ const defaultAttributes: Record<string, any> = {
   "max-zoom": 10,
   "current-zoom": 1,
   "view-margin-top": 0,
-  "view-margin-right": -50,
+  "view-margin-right": 0,
   "view-margin-bottom": 0,
-  "view-margin-left": 100,
+  "view-margin-left": 0,
   "view-offset-x": 0,
   "view-offset-y": 0,
 }
@@ -42,7 +42,6 @@ export class ZoomableView extends HTMLElement {
           width: 100%;
           height: 100%;
           display: flex;
-          flex-direction: column;
           align-items: center;
           justify-content: center;
           isolation: isolate;
@@ -56,7 +55,7 @@ export class ZoomableView extends HTMLElement {
         }
         #content {
           position: relative;
-          border: 1px dashed red;
+          overflow: hidden;
         }
       </style>
       <div id="container" part="container">
