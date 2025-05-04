@@ -14,8 +14,19 @@ html, body {
 
 #render-area {
   position: relative;
-  width: 100dvw;
-  height: 100dvh;
+  width: 80dvw;
+  height: 80dvh;
+  top: 10dvw;
+  left: 10dvh;
+  transform: scale(0.9) rotate(45deg);
+  border: 2px dashed blue;
+  overflow: auto;
+}
+
+#dashboard {
+  position: relative;
+  background-color: #111;
+  width: calc(80dvw - 5px);
 }
 
 #clock {

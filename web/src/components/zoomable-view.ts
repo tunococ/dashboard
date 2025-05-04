@@ -1,3 +1,18 @@
+const defaultAttributes: Record<string, any> = {
+  "zoom-speed": 0.002,
+  "min-zoom": 0.1,
+  "max-zoom": 10,
+  "current-zoom": 1,
+  "view-margin-top": 0,
+  "view-margin-right": -50,
+  "view-margin-bottom": 0,
+  "view-margin-left": 100,
+  "view-offset-x": 0,
+  "view-offset-y": 0,
+}
+
+type AttributeName = keyof typeof defaultAttributes
+
 export class ZoomableView extends HTMLElement {
 
   static register(name: string = "zoomable-view") {
@@ -5,7 +20,6 @@ export class ZoomableView extends HTMLElement {
       name,
       ZoomableView,
     )
-    console.log("zoomable-view registered")
   }
 
   container: HTMLDivElement
@@ -14,7 +28,6 @@ export class ZoomableView extends HTMLElement {
 
   constructor() {
     super()
-    console.log(`ZoomableView created`)
 
     const template = document.createElement("template")
     template.innerHTML = `
@@ -33,6 +46,7 @@ export class ZoomableView extends HTMLElement {
           align-items: center;
           justify-content: center;
           isolation: isolate;
+          overflow: hidden;
         }
         #background {
           position: absolute;
@@ -41,6 +55,8 @@ export class ZoomableView extends HTMLElement {
           z-index: -1;
         }
         #content {
+          position: relative;
+          border: 1px dashed red;
         }
       </style>
       <div id="container" part="container">
@@ -64,34 +80,28 @@ export class ZoomableView extends HTMLElement {
     this.background = background
     this.content = content
 
+    // Set up event listeners
+
     this.container.addEventListener("wheel", (e: Event) => this.onWheelEvent(e))
+
+    const onPointerEvent = (e: Event) => this.onPointerEvent(e)
+    this.container.addEventListener("pointerdown", onPointerEvent)
+    this.container.addEventListener("pointerup", onPointerEvent)
+    this.container.addEventListener("pointermove", onPointerEvent)
+    this.container.addEventListener("pointercancel", onPointerEvent)
+
+    const resizeObserver = new ResizeObserver(() => {
+      this.onContentResized()
+    })
+    resizeObserver.observe(container, { box: "border-box" })
+    resizeObserver.observe(content, { box: "border-box" })
   }
 
-  static readonly observedAttributes = [
-    "zoom-speed",
-    "min-zoom",
-    "max-zoom",
-    "current-zoom",
-    "bound-top",
-    "bound-right",
-    "bound-bottom",
-    "bound-left",
-  ]
+  static readonly observedAttributes = Object.keys(defaultAttributes)
 
-  static readonly defaultAttributes: Record<string, any> = {
-    "zoom-speed": 0.01,
-    "min-zoom": 0.1,
-    "max-zoom": 10,
-    "current-zoom": 1,
-    "bound-top": 0,
-    "bound-right": 1920,
-    "bound-bottom": 1080,
-    "bound-left": 0,
-  }
-
-  private getNumberAttribute(name: string) {
+  protected getNumberAttribute(name: AttributeName): number {
     const num = parseFloat(this.getAttribute(name)!)
-    return isNaN(num) ? ZoomableView.defaultAttributes[name] : num;
+    return isNaN(num) ? defaultAttributes[name] : num;
   }
 
   get zoomSpeed(): number {
@@ -116,100 +126,311 @@ export class ZoomableView extends HTMLElement {
     return this.getNumberAttribute("current-zoom")
   }
   set currentZoom(value: any) {
-    console.log(`setting currentZoom to ${value}`)
     this.setAttribute("current-zoom", value.toString())
   }
-  get boundTop(): number {
-    return this.getNumberAttribute("bound-top")
+  get viewMarginTop(): number {
+    return this.getNumberAttribute("view-margin-top")
   }
-  set boundTop(value: any) {
-    this.setAttribute("bound-top", value.toString())
+  set viewMarginTop(value: any) {
+    this.setAttribute("view-margin-top", value.toString())
   }
-  get boundRight(): number {
-    return this.getNumberAttribute("bound-right")
+  get viewMarginRight(): number {
+    return this.getNumberAttribute("view-margin-right")
   }
-  set boundRight(value: any) {
-    this.setAttribute("bound-right", value.toString())
+  set viewMarginRight(value: any) {
+    this.setAttribute("view-margin-right", value.toString())
   }
-  get boundbottom(): number {
-    return this.getNumberAttribute("bound-bottom")
+  get viewMarginBottom(): number {
+    return this.getNumberAttribute("view-margin-bottom")
   }
-  set boundbottom(value: any) {
-    this.setAttribute("bound-bottom", value.toString())
+  set viewMarginBottom(value: any) {
+    this.setAttribute("view-margin-bottom", value.toString())
   }
-  get boundLeft(): number {
-    return this.getNumberAttribute("bound-left")
+  get viewMarginLeft(): number {
+    return this.getNumberAttribute("view-margin-left")
   }
-  set boundLeft(value: any) {
-    this.setAttribute("bound-left", value.toString())
+  set viewMarginLeft(value: any) {
+    this.setAttribute("view-margin-left", value.toString())
   }
+  get viewOffsetX(): number {
+    return this.getNumberAttribute("view-offset-x")
+  }
+  set viewOffsetX(value: any) {
+    this.setAttribute("view-offset-x", value.toString())
+  }
+  get viewOffsetY(): number {
+    return this.getNumberAttribute("view-offset-y")
+  }
+  set viewOffsetY(value: any) {
+    this.setAttribute("view-offset-y", value.toString())
+  }
+  minViewOffsetX: number = 0
+  maxViewOffsetX: number = 0
+  minViewOffsetY: number = 0
+  maxViewOffsetY: number = 0
 
   connectedCallback() {
-    // const slottedElements = this.querySelectorAll("slot")
-    // for (const slottedElement of slottedElements) {
-    //   if (slottedElement.slot === "background") {
-    //
-    //   }
-    // }
-    //
-    // this.addEventListener("wheel", (e) => this.onWheelEvent(e), { passive: false })
-    // console.log(`currentZoom is now ${this.currentZoom}`)
+    this.update()
   }
 
-  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
+  attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
     switch (name) {
       case "current-zoom": {
-        const currentZoom = parseFloat(newValue)
-        this.content.style.setProperty("transform", `scale(${currentZoom})`)
-        console.log(`currentZoom=${newValue} (${oldValue} => ${newValue})`)
+        this.content.style.setProperty("transform", `scale(${this.currentZoom})`)
+        this.updateViewOffsetBounds()
+        this.validateViewOffsetX()
+        this.validateViewOffsetY()
         break
       }
-      case "max-zoom":
-      case "min-zoom": {
+      case "min-zoom":
+      case "max-zoom": {
         this.validateZoom()
+        this.updateViewOffsetBounds()
+        this.validateViewOffsetX()
+        this.validateViewOffsetY()
+        break
+      }
+      case "view-offset-x": {
+        const viewOffsetX = parseFloat(newValue)
+        this.content.style.setProperty("left", `${viewOffsetX}px`)
+        break
+      }
+      case "view-offset-y": {
+        const viewOffsetY = parseFloat(newValue)
+        this.content.style.setProperty("top", `${viewOffsetY}px`)
+        break
+      }
+      case "view-margin-top":
+      case "view-margin-right":
+      case "view-margin-bottom":
+      case "view-margin-left": {
+        this.updateViewOffsetBounds()
+        this.validateViewOffsetX()
+        this.validateViewOffsetY()
         break
       }
     }
   }
 
-  changeZoom(delta: number): boolean {
-    const currentZoom = this.currentZoom
-    const zoomDelta = -delta * this.zoomSpeed
-    const newZoom = currentZoom + zoomDelta
-    if (zoomDelta > 0) {
-      const maxZoom = this.maxZoom
-      if (currentZoom >= maxZoom) {
-        return false
-      }
-      this.currentZoom = Math.min(newZoom, maxZoom)
-    } else if (zoomDelta < 0) {
-      const minZoom = this.minZoom
-      if (currentZoom <= minZoom) {
-        return false
-      }
-      this.currentZoom = Math.max(newZoom, minZoom)
+  /**
+   * Makes sure that `this[attr]`  is between `lowerBound` and `upperBound`.
+   *
+   * @param attr Name of the attribute whose value should be contained in an interval.
+   * @param lowerBound The lower bound of the interval.
+   * @param upperBound The upper bound of the interval.
+   * @returns `true` iff `this[attr]` has been changed.
+   */
+  protected validateBoundedAttribute(attr: AttributeName, lowerBound: number, upperBound: number): boolean {
+    const currentValue = this.getNumberAttribute(attr);
+    const newValue = clamp(currentValue, lowerBound, upperBound)
+    if (newValue === currentValue) {
+      return false;
     }
+    this.setAttribute(attr, newValue.toString())
+    return true;
+  }
+
+  protected setBoundedAttribute(attr: AttributeName, newValue: number, lowerBound: number, upperBound: number): boolean {
+    newValue = clamp(newValue, lowerBound, upperBound)
+    if (this.getNumberAttribute(attr) === newValue) {
+      return false
+    }
+    this.setAttribute(attr, newValue.toString())
     return true
   }
 
+  setZoom(newZoom: number, keepCenter: boolean = true): boolean {
+    if (keepCenter) {
+      let currentZoom = this.currentZoom
+      const centerX = this.viewOffsetX / currentZoom
+      const centerY = this.viewOffsetY / currentZoom
 
-  private onWheelEvent(e: Event) {
+      let changed: boolean = false
+      changed ||= this.setBoundedAttribute("current-zoom", newZoom, this.minZoom, this.maxZoom)
+
+      currentZoom = this.currentZoom
+      const newViewOffsetX = centerX * currentZoom
+      const newViewOffsetY = centerY * currentZoom
+
+      this.updateViewOffsetBounds()
+      changed ||= this.setViewOffset(newViewOffsetX, newViewOffsetY)
+      return changed
+    }
+    return this.setBoundedAttribute("current-zoom", newZoom, this.minZoom, this.maxZoom)
+  }
+
+  protected validateZoom(): boolean {
+    return this.validateBoundedAttribute("current-zoom", this.minZoom, this.maxZoom)
+  }
+
+  setViewOffsetX(newViewOffsetX: number): boolean {
+    return this.setBoundedAttribute("view-offset-x", newViewOffsetX, this.minViewOffsetX, this.maxViewOffsetX)
+  }
+
+  setViewOffsetY(newViewOffsetY: number): boolean {
+    return this.setBoundedAttribute("view-offset-y", newViewOffsetY, this.minViewOffsetY, this.maxViewOffsetY)
+  }
+
+  setViewOffset(newViewOffsetX: number, newViewOffsetY: number) {
+    const offsetXUpdated = this.setViewOffsetX(newViewOffsetX)
+    const offsetYUpdated = this.setViewOffsetY(newViewOffsetY)
+    return offsetXUpdated || offsetYUpdated
+  }
+
+  scrollView(deltaX?: number, deltaY?: number) {
+    if (deltaX != undefined) {
+      this.setViewOffsetX(clamp(this.viewOffsetX + deltaX, this.minViewOffsetX, this.maxViewOffsetX))
+    }
+    if (deltaY != undefined) {
+      this.setViewOffsetY(clamp(this.viewOffsetY + deltaY, this.minViewOffsetY, this.maxViewOffsetY))
+    }
+  }
+
+  protected updateViewOffsetBounds() {
+    const currentZoom = this.currentZoom
+
+    const halfContainerWidth = 0.5 * this.container.clientWidth
+    const halfContentOffsetWidth = 0.5 * this.content.offsetWidth
+
+    // Compute the length of `content` (including `viewLeftMargin`) on the left
+    // of the origin.
+    const leftContentWidth = halfContentOffsetWidth + this.viewMarginLeft * currentZoom
+    // Excess is positive if the left side of the content spills cannot be
+    // contained inside `container`; otherwise it is negative, and its absolute
+    // value is the leftover space that `container` has on the left of
+    // `content`.
+    const leftExcess = leftContentWidth * currentZoom - halfContainerWidth
+
+    // Compute the same 2 numbers as above for the right side.
+    const rightContentWidth = halfContentOffsetWidth + this.viewMarginRight * currentZoom
+    const rightExcess = rightContentWidth * currentZoom - halfContainerWidth
+
+    // Note: the following may be non-trivial.
+    //
+    // `minViewOffsetX` determines how far left scrolling can go.
+    // The more negative `minViewOffsetX` is, the further left scrolling can go.
+    //
+    // `minViewOffsetX` must be negative enough to allow the user to see the
+    // right portion of `content` (including `viewRightMargin`). This
+    // corresponds to the term `-rightExcess` in the expression below. If
+    // `rightExcess` is larger (more positive), we can scroll more.
+    //
+    // Although the condition above is in fact sufficient, we allow additional
+    // scrolling when `content` is smaller than `container`, i.e., there is
+    // some leftover area on the left of `content`. We let left scrolling go
+    // far enough to see the full left part of `content` including
+    // `viewLeftMargin`. This corresponds to the term `leftExcess` in the
+    // expression below.
+    this.minViewOffsetX = Math.min(leftExcess, -rightExcess)
+    // The formula for `maxViewOffsetX` is derived in a similar fashion.
+    this.maxViewOffsetX = Math.max(leftExcess, -rightExcess)
+
+    // Now we do the same thing with the y-axis.
+    const halfContainerHeight = 0.5 * this.container.clientHeight
+    const halfContentOffsetHeight = 0.5 * this.content.offsetHeight
+
+    const topContentHeight = halfContentOffsetHeight + this.viewMarginTop * currentZoom
+    const topExcess = topContentHeight * currentZoom - halfContainerHeight
+
+    const bottomContentHeight = halfContentOffsetHeight + this.viewMarginBottom * currentZoom
+    const bottomExcess = bottomContentHeight * currentZoom - halfContainerHeight
+
+    this.minViewOffsetY = Math.min(topExcess, -bottomExcess)
+    this.maxViewOffsetY = Math.max(topExcess, -bottomExcess)
+  }
+
+  protected validateViewOffsetX(): boolean {
+    return this.validateBoundedAttribute("view-offset-x", this.minViewOffsetX, this.maxViewOffsetX)
+  }
+
+  protected validateViewOffsetY(): boolean {
+    return this.validateBoundedAttribute("view-offset-y", this.minViewOffsetY, this.maxViewOffsetY)
+  }
+
+  /**
+   * Forces the component to update.
+   */
+  update() {
+    this.updateViewOffsetBounds()
+    this.validateZoom()
+    this.validateViewOffsetX()
+    this.validateViewOffsetY()
+  }
+
+  protected onContentResized() {
+    this.updateViewOffsetBounds()
+  }
+
+  protected onWheelEvent(e: Event) {
     const event = e as WheelEvent
-    console.log(`wheelEvent: deltaY = ${event.deltaY}`)
-    if (this.changeZoom(event.deltaY)) {
-      event.preventDefault()
-    }
+    const newZoom = this.currentZoom * (2 ** (-this.zoomSpeed * event.deltaY))
+
+    this.setZoom(newZoom)
+    event.preventDefault()
   }
 
-  private validateZoom() {
-    const maxZoom = this.maxZoom
-    const minZoom = this.minZoom
-    if (maxZoom < minZoom) {
-      this.currentZoom = 0.5 * (maxZoom + minZoom)
-      return
-    }
-    this.currentZoom = Math.max(Math.min(this.currentZoom, maxZoom), minZoom)
-  }
+  protected scrollingStarted: boolean = false
+  protected scrolling: boolean = false
+  protected scrollStartX: number = 0
+  protected scrollStartY: number = 0
 
+  protected onPointerEvent(e: Event) {
+    const event = e as PointerEvent
+    if (event.isPrimary) {
+      switch (event.type) {
+        case "pointerdown": {
+          const isScrollButton = event.pointerType === "mouse" ? (event.button === 0) : true
+          if (isScrollButton) {
+            this.scrollingStarted = true
+            this.container.setPointerCapture(event.pointerId)
+            event.preventDefault()
+          }
+          break;
+        }
+        case "pointerup": {
+          if (this.scrollingStarted) {
+            this.scrolling = false
+            this.scrollingStarted = false
+
+            event.preventDefault()
+          }
+          break;
+        }
+        case "pointercancel": {
+          if (this.scrollingStarted) {
+            this.scrolling = false
+            this.scrollingStarted = false
+
+            event.preventDefault()
+          }
+          break;
+        }
+        case "pointermove": {
+          if (this.scrollingStarted) {
+            if (this.scrolling) {
+              const deltaX = event.offsetX - this.scrollStartX
+              const deltaY = event.offsetY - this.scrollStartY
+              this.scrollView(deltaX, deltaY)
+            } else {
+              this.scrolling = true
+            }
+            this.scrollStartX = event.offsetX
+            this.scrollStartY = event.offsetY
+            event.preventDefault()
+          }
+          break;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Clamps `value` to be inside `[lowerBound, upperBound]`.
+ *
+ * If `upperBound < lowerBound`, `lowerBound` will be returned.
+ */
+function clamp(value: number, lowerBound: number, upperBound: number): number {
+  return Math.max(Math.min(value, upperBound), lowerBound)
 }
 
