@@ -262,6 +262,17 @@ export class ZoomableView extends HTMLElement {
     return this.validateBoundedAttribute("current-zoom", this.minZoom, this.maxZoom)
   }
 
+  getScaleToFit(): number {
+    return Math.min(
+      this.container.clientWidth / this.content.offsetWidth,
+      this.container.clientHeight / this.content.offsetHeight,
+    )
+  }
+
+  zoomToFit(): boolean {
+    return this.setZoom(this.getScaleToFit())
+  }
+
   setViewOffsetX(newViewOffsetX: number): boolean {
     return this.setBoundedAttribute("view-offset-x", newViewOffsetX, this.minViewOffsetX, this.maxViewOffsetX)
   }
@@ -362,10 +373,23 @@ export class ZoomableView extends HTMLElement {
 
   protected onWheelEvent(e: Event) {
     const event = e as WheelEvent
-    const newZoom = this.currentZoom * (2 ** (-this.zoomSpeed * event.deltaY))
-
-    this.setZoom(newZoom)
-    event.preventDefault()
+    if (event.deltaY != undefined) {
+      setTimeout(() => { }, 0)
+      let deltaY = event.deltaY
+      switch (event.deltaMode) {
+        // It is unclear if this will ever happen.
+        // We use the same fallback logic as `DOM_DELTA_LINE` for now.
+        case WheelEvent.DOM_DELTA_PAGE:
+        case WheelEvent.DOM_DELTA_LINE: {
+          // TODO: Replace 17 with a not-so-magic number.
+          deltaY = event.deltaY * 17
+          break
+        }
+      }
+      const newZoom = this.currentZoom * (2 ** (-this.zoomSpeed * deltaY))
+      this.setZoom(newZoom)
+      event.preventDefault()
+    }
   }
 
   protected scrollingStarted: boolean = false
