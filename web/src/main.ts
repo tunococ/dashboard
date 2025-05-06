@@ -1,4 +1,6 @@
 import './style.css'
+import animatedSeal from '../public/seal.png'
+import faceland from '../public/Faceland.png'
 import { ZoomableView } from './components/zoomable-view'
 
 ZoomableView.register()
@@ -12,15 +14,22 @@ app.innerHTML = `
   <div id="render-area">
     <zoomable-view id="zoomable-view" view-margin-left=10 view-margin-right=10>
       <div slot="background" style="position: relative; width: 100%; height: 100%;">
-        <img src="https://images.unsplash.com/photo-1634487828605-72a3ccc3c652?q=80&w=2574&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" style="display: block; width:100%; height:100%; object-fit: cover; object-position: center;" />
+        <img src="${faceland}" style="display: block; width:100%; height:100%; object-fit: cover; object-position: center;" />
       </div>
-      <div id="dashboard">
+      <div id="dashboard" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
         <div id="clock" style="white-space:pre;">
+        </div>
+        <div style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
+          <img src="${animatedSeal}" width=70 />
+          <img src="${animatedSeal}" width=70 />
+          <img src="${animatedSeal}" width=70 />
+          <img src="${animatedSeal}" width=70 />
         </div>
       </div>
     </zoomable-view>
   </div>
 `
+//          <img src="${crawlShade}" width=200 style="width:100%; height:100%; object-position: center;" />
 
 const renderArea = document.querySelector("#render-area")
 if (!renderArea) {
@@ -48,5 +57,5 @@ const clock = document.getElementById("clock")
   )
 }
 
-zoomableView.zoomToFit(true)
+setTimeout(() => zoomableView.zoomToFit(true), 0)
 
