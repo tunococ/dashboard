@@ -13,6 +13,8 @@ const defaultAttributes: Record<string, any> = {
 
 type AttributeName = keyof typeof defaultAttributes
 
+type Point2D = { x: number; y: number; }
+
 export class ZoomableView extends HTMLElement {
 
   static register(name: string = "zoomable-view") {
@@ -46,6 +48,7 @@ export class ZoomableView extends HTMLElement {
           justify-content: center;
           isolation: isolate;
           overflow: hidden;
+          touch-action: none;
         }
         #background {
           position: absolute;
@@ -269,8 +272,17 @@ export class ZoomableView extends HTMLElement {
     )
   }
 
-  zoomToFit(): boolean {
-    return this.setZoom(this.getScaleToFit())
+  zoomToFit(adjustBounds: boolean = false): boolean {
+    const scaleToFit = this.getScaleToFit()
+    if (adjustBounds) {
+      if (scaleToFit > this.maxZoom) {
+        this.maxZoom = scaleToFit
+      }
+      if (scaleToFit < this.minZoom) {
+        this.minZoom = scaleToFit
+      }
+    }
+    return this.setZoom(scaleToFit)
   }
 
   setViewOffsetX(newViewOffsetX: number): boolean {
@@ -304,7 +316,7 @@ export class ZoomableView extends HTMLElement {
 
     // Compute the length of `content` (including `viewLeftMargin`) on the left
     // of the origin.
-    const leftContentWidth = halfContentOffsetWidth + this.viewMarginLeft * currentZoom
+    const leftContentWidth = halfContentOffsetWidth + this.viewMarginLeft
     // Excess is positive if the left side of the content spills cannot be
     // contained inside `container`; otherwise it is negative, and its absolute
     // value is the leftover space that `container` has on the left of
@@ -312,7 +324,7 @@ export class ZoomableView extends HTMLElement {
     const leftExcess = leftContentWidth * currentZoom - halfContainerWidth
 
     // Compute the same 2 numbers as above for the right side.
-    const rightContentWidth = halfContentOffsetWidth + this.viewMarginRight * currentZoom
+    const rightContentWidth = halfContentOffsetWidth + this.viewMarginRight
     const rightExcess = rightContentWidth * currentZoom - halfContainerWidth
 
     // Note: the following may be non-trivial.
@@ -382,6 +394,8 @@ export class ZoomableView extends HTMLElement {
         case WheelEvent.DOM_DELTA_PAGE:
         case WheelEvent.DOM_DELTA_LINE: {
           // TODO: Replace 17 with a not-so-magic number.
+          // This is a workaround for Firefox as it seems like only Firefox
+          // fires this event with `deltaMode = DOM_DELTA_LINE`.
           deltaY = event.deltaY * 17
           break
         }
@@ -392,56 +406,82 @@ export class ZoomableView extends HTMLElement {
     }
   }
 
-  protected scrollingStarted: boolean = false
-  protected scrolling: boolean = false
-  protected scrollStartX: number = 0
-  protected scrollStartY: number = 0
+  protected pointers: { id: number; x: number; y: number; }[] = []
+
+  protected pointerScrolling: boolean = false
+  protected pointerScrollTracking: boolean = false
+  protected pointerLastCentroid: Point2D = { x: 0, y: 0 }
+
+  protected pointerZooming: boolean = false
+  protected pointerZoomTracking: boolean = false
+  protected pointerLastRadius: number = 0
 
   protected onPointerEvent(e: Event) {
     const event = e as PointerEvent
-    if (event.isPrimary) {
+    const pointer = {
+      id: event.pointerId,
+      ...transformFromScreenCoordinates(this, event.pageX, event.pageY)
+    }
+
+    if (event.type === "pointerdown") {
+      this.pointers.push(pointer)
+      this.container.setPointerCapture(event.pointerId)
+      if (this.pointers.length === 1) {
+        // Start scrolling
+        this.pointerScrolling = true
+      } else if (this.pointers.length === 2) {
+        // Start zooming
+        this.pointerZooming = true
+      }
+      this.pointerLastCentroid = centroid(this.pointers)
+      this.pointerLastRadius = average(
+        this.pointers.map(p => distance(p, this.pointerLastCentroid))
+      )
+      event.preventDefault()
+    } else {
+      const index = this.pointers.findIndex(
+        pe => pe.id === pointer.id
+      )
+      if (index < 0) {
+        return
+      }
       switch (event.type) {
-        case "pointerdown": {
-          const isScrollButton = event.pointerType === "mouse" ? (event.button === 0) : true
-          if (isScrollButton) {
-            this.scrollingStarted = true
-            this.container.setPointerCapture(event.pointerId)
-            event.preventDefault()
-          }
-          break;
-        }
-        case "pointerup": {
-          if (this.scrollingStarted) {
-            this.scrolling = false
-            this.scrollingStarted = false
-
-            event.preventDefault()
-          }
-          break;
-        }
-        case "pointercancel": {
-          if (this.scrollingStarted) {
-            this.scrolling = false
-            this.scrollingStarted = false
-
-            event.preventDefault()
-          }
-          break;
-        }
         case "pointermove": {
-          if (this.scrollingStarted) {
-            if (this.scrolling) {
-              const deltaX = event.offsetX - this.scrollStartX
-              const deltaY = event.offsetY - this.scrollStartY
-              this.scrollView(deltaX, deltaY)
-            } else {
-              this.scrolling = true
-            }
-            this.scrollStartX = event.offsetX
-            this.scrollStartY = event.offsetY
-            event.preventDefault()
+          const newCentroid = centroid(this.pointers)
+          this.pointers[index] = pointer
+          if (this.pointerScrolling) {
+            this.scrollView(
+              newCentroid.x - this.pointerLastCentroid.x,
+              newCentroid.y - this.pointerLastCentroid.y,
+            )
+            this.pointerLastCentroid = newCentroid
           }
-          break;
+          if (this.pointerZooming) {
+            const newRadius = average(
+              this.pointers.map(p => distance(p, newCentroid))
+            )
+            const zoomMultiple = newRadius / this.pointerLastRadius
+            this.setZoom(this.currentZoom * zoomMultiple)
+            this.pointerLastRadius = newRadius
+          }
+          event.preventDefault()
+          break
+        }
+        case "pointercancel":
+        case "pointerup": {
+          // Tracking is reset every time a pointer is removed.
+          this.pointers.splice(index, 1)
+          if (this.pointers.length === 1) {
+            this.pointerZooming = false
+          } else if (this.pointers.length === 0) {
+            this.pointerScrolling = false
+          }
+          this.pointerLastCentroid = centroid(this.pointers)
+          this.pointerLastRadius = average(
+            this.pointers.map(p => distance(p, this.pointerLastCentroid))
+          )
+          event.preventDefault()
+          break
         }
       }
     }
@@ -455,5 +495,42 @@ export class ZoomableView extends HTMLElement {
  */
 function clamp(value: number, lowerBound: number, upperBound: number): number {
   return Math.max(Math.min(value, upperBound), lowerBound)
+}
+
+function average(nums: Iterable<number>): number {
+  let i = 0
+  let sum = 0
+  for (const num of nums) {
+    sum += num;
+    ++i
+  }
+  return i == 0 ? 0 : sum / i
+}
+
+function centroid(points: Iterable<Point2D>): Point2D {
+  let i = 0
+  let sumX = 0
+  let sumY = 0
+  for (const { x, y } of points) {
+    sumX += x
+    sumY += y
+    ++i
+  }
+  return i == 0 ? { x: 0, y: 0 } : { x: sumX / i, y: sumY / i }
+}
+
+function distance(p: Point2D, q: Point2D): number {
+  return Math.sqrt((p.x - q.x) ** 2 + (p.y - q.y) ** 2)
+}
+
+function transformFromScreenCoordinates(element: Element, x: number, y: number): Point2D {
+  let e: Element | null = element
+  let m: DOMMatrixReadOnly = new DOMMatrixReadOnly()
+  while (e) {
+    m = (new DOMMatrixReadOnly(getComputedStyle(e).transform)).multiply(m)
+    e = e.parentElement
+  }
+  const point = (new DOMPointReadOnly(x, y)).matrixTransform(m.inverse())
+  return { x: point.x, y: point.y }
 }
 

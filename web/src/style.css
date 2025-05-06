@@ -26,9 +26,8 @@ html, body {
 }
 
 #clock {
-  color: #7ff;
-  text-shadow: 2px 2px 3px #000;
-  font-size: 4rem;
+  color: #9ff;
+  text-shadow: 0.05em 0.05em 0.1em #000;
   font-family: monospace;
 }
 
