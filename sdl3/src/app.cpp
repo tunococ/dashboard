@@ -7,14 +7,9 @@
 
 #include "app.hpp"
 
-SDL_AppResult App::init(int argc, char** argv) {
+SDL_AppResult App::init(int argc, char **argv) {
   SDL_Init(SDL_INIT_VIDEO);
-  window = SDL_CreateWindow(
-      "Dashboard",
-      640,
-      480,
-      SDL_WINDOW_OPENGL
-      );
+  window = SDL_CreateWindow("Dashboard", 640, 480, SDL_WINDOW_OPENGL);
   if (!window) {
     std::cout << "window is null" << std::endl;
     return SDL_APP_FAILURE;
@@ -33,7 +28,7 @@ SDL_AppResult App::onTick() {
   return SDL_APP_CONTINUE;
 }
 
-SDL_AppResult App::onEvent(SDL_Event* event) {
+SDL_AppResult App::onEvent(SDL_Event *event) {
   if (event && event->type == SDL_EVENT_QUIT) {
     return SDL_APP_SUCCESS;
   }
@@ -49,4 +44,3 @@ void App::onExit(SDL_AppResult result) {
   std::cout << "quitting" << std::endl;
   SDL_Quit();
 }
-

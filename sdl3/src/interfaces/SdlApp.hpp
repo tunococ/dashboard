@@ -1,3 +1,5 @@
+#pragma once
+
 #include <concepts>
 #include <SDL3/SDL_init.h>
 

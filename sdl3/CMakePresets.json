@@ -1,0 +1,16 @@
+{
+  "version": 10,
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "generator": "Ninja",
+      "environment": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "1"
+      }
+    }
+  ]
+}
