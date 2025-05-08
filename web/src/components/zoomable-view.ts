@@ -425,7 +425,6 @@ export class ZoomableView extends HTMLElement {
 
     if (event.type === "pointerdown") {
       this.pointers.push(pointer)
-      this.container.setPointerCapture(event.pointerId)
       if (this.pointers.length === 1) {
         // Start scrolling
         this.pointerScrolling = true
@@ -447,6 +446,7 @@ export class ZoomableView extends HTMLElement {
       }
       switch (event.type) {
         case "pointermove": {
+          this.container.setPointerCapture(event.pointerId)
           const newCentroid = centroid(this.pointers)
           this.pointers[index] = pointer
           if (this.pointerScrolling) {
@@ -465,6 +465,7 @@ export class ZoomableView extends HTMLElement {
             this.pointerLastRadius = newRadius
           }
           event.preventDefault()
+          event.stopPropagation()
           break
         }
         case "pointercancel":
@@ -481,6 +482,7 @@ export class ZoomableView extends HTMLElement {
             this.pointers.map(p => distance(p, this.pointerLastCentroid))
           )
           event.preventDefault()
+          event.stopPropagation()
           break
         }
       }

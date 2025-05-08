@@ -1,12 +1,12 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
-#include "interfaces/SdlApp.hpp"
 #include "app.hpp"
+#include "lib/SdlApp.hpp"
 
 static_assert(SdlApp<App>);
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   App app{};
 
   SDL_AppResult result = app.init(argc, argv);
@@ -35,5 +35,3 @@ int main(int argc, char* argv[]) {
   app.onExit(result);
   return result == SDL_APP_SUCCESS ? 0 : 1;
 }
-
-
