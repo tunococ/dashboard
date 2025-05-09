@@ -10,6 +10,14 @@ target_sources(dashboard
 target_link_libraries(dashboard
   PRIVATE
     sdl_glue
+    utils
     SDL3::SDL3
 )
+if(DEFINED SDL_ASSERT_LEVEL)
+  target_compile_definitions(dashboard
+    PRIVATE
+      SDL_ASSERT_LEVEL=${SDL_ASSERT_LEVEL}
+  )
+  message(STATUS "SDL_ASSERT_LEVEL=${SDL_ASSERT_LEVEL}")
+endif()
 
