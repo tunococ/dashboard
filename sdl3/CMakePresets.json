@@ -6,6 +6,13 @@
   },
   "configurePresets": [
     {
+      "name": "dev",
+      "generator": "Ninja",
+      "environment": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "1"
+      }
+    },
+    {
       "name": "default",
       "generator": "Ninja",
       "environment": {

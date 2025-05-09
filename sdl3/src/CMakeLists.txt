@@ -1,14 +1,3 @@
-add_library(SdlApp INTERFACE) 
-target_sources(SdlApp
-  INTERFACE FILE_SET sdl_app TYPE HEADERS
-  FILES
-    interfaces/SdlApp.hpp
-)
-target_link_libraries(SdlApp
-  INTERFACE
-    SDL3::SDL3
-)
-
 add_executable(dashboard)
 target_sources(dashboard
   PRIVATE
@@ -20,7 +9,7 @@ target_sources(dashboard
 )
 target_link_libraries(dashboard
   PRIVATE
-    SdlApp
+    sdl_glue
     SDL3::SDL3
 )
 

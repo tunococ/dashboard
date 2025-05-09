@@ -18,6 +18,7 @@ CPMAddPackage(
     GIT_TAG release-3.2.10
 )
 
+add_subdirectory(libs)
 add_subdirectory(src)
 
 

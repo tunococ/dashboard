@@ -2,7 +2,7 @@
 #include <SDL3/SDL_main.h>
 
 #include "app.hpp"
-#include "lib/SdlApp.hpp"
+#include <sdl_glue/SdlApp.hpp>
 
 static_assert(SdlApp<App>);
 

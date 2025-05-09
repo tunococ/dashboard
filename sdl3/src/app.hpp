@@ -3,7 +3,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_init.h>
 
-#include <lib/SdlApp.hpp>
+#include <sdl_glue/SdlApp.hpp>
 
 struct App {
   SDL_AppResult init(int argc, char **argv);
