@@ -1,23 +1,28 @@
-add_executable(dashboard)
-target_sources(dashboard
-  PRIVATE
-    app.cpp
-    main.cpp
-  PRIVATE FILE_SET app_interface TYPE HEADERS
+add_library(dashboard_app STATIC)
+target_sources(dashboard_app
+  PUBLIC FILE_SET app TYPE CXX_MODULES
   FILES
-    app.hpp
+    app.cxx
+#    app.cpp
 )
-target_link_libraries(dashboard
+target_link_libraries(dashboard_app
   PRIVATE
     sdl_glue
     utils
     SDL3::SDL3
 )
-if(DEFINED SDL_ASSERT_LEVEL)
-  target_compile_definitions(dashboard
-    PRIVATE
-      SDL_ASSERT_LEVEL=${SDL_ASSERT_LEVEL}
-  )
-  message(STATUS "SDL_ASSERT_LEVEL=${SDL_ASSERT_LEVEL}")
-endif()
+
+add_executable(dashboard)
+target_sources(dashboard
+  PRIVATE FILE_SET db TYPE CXX_MODULES
+  FILES
+    main.cpp
+)
+target_link_libraries(dashboard
+  PRIVATE
+    dashboard_app
+    sdl_glue
+    utils
+    SDL3::SDL3
+)
 

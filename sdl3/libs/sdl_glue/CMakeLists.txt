@@ -1,12 +1,13 @@
-add_library(sdl_glue INTERFACE)
+add_library(sdl_glue STATIC)
 target_sources(sdl_glue
-  INTERFACE FILE_SET sdl_glue TYPE HEADERS
+  PUBLIC FILE_SET sdl_glue TYPE CXX_MODULES
   BASE_DIRS
-    include
+    interface
   FILES
-    include/sdl_glue/SdlApp.hpp
+    interface/sdl_glue/app.cxx
+    interface/sdl_glue/main.cxx
 )
 target_link_libraries(sdl_glue
-  INTERFACE
+  PUBLIC
     SDL3::SDL3
 )

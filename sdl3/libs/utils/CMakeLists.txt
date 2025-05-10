@@ -1,7 +1,9 @@
-add_library(utils INTERFACE)
+add_library(utils STATIC)
 target_sources(utils
-  INTERFACE FILE_SET utils_files TYPE HEADERS
-  BASE_DIRS include
+  PUBLIC FILE_SET utils TYPE CXX_MODULES
+  BASE_DIRS
+    interface
   FILES
-    defer.hpp
+    interface/utils/defer.cxx
+    interface/utils/main.cxx
 )

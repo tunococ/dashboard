@@ -1,12 +1,15 @@
 module;
 
+#include <chrono>
+#include <iostream>
+
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_render.h>
 
-module dashboard_app;
+export module dashboard.app;
 
+import dashboard.utils;
 import dashboard.sdl_glue;
 
 export struct App {
@@ -22,11 +25,6 @@ export struct App {
   std::chrono::time_point<Clock> last_tick_time;
   std::chrono::time_point<Clock> last_event_time;
 };
-
-#include <chrono>
-#include <iostream>
-import dashboard.sdl_glue;
-import dashboard.utils;
 
 static_assert(SdlApp<App>);
 

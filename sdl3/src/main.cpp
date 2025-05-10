@@ -1,6 +1,4 @@
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_assert.h>
-#include <SDL3/SDL_main.h>
+module;
 
 #include <atomic>
 #include <chrono>
@@ -9,10 +7,15 @@
 #include <mutex>
 #include <thread>
 
-#include <sdl_glue/SdlApp.hpp>
-#include <utils/defer.hpp>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_assert.h>
+#include <SDL3/SDL_main.h>
 
-#include "app.hpp"
+export module dashboard;
+
+import dashboard.sdl_glue;
+import dashboard.utils;
+import dashboard.app;
 
 static_assert(SdlApp<App>);
 

@@ -6,18 +6,46 @@
   },
   "configurePresets": [
     {
-      "name": "dev",
+      "name": "dev-base",
       "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_CXX_SCAN_FOR_MODULES": "OFF"
+      },
       "environment": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "1"
       }
     },
     {
-      "name": "default",
-      "generator": "Ninja",
+      "name": "dev-gcc",
+      "inherits": [
+        "dev-base"
+      ],
       "environment": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "1"
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
       }
+    },
+    {
+      "name": "dev-clang",
+      "inherits": [
+        "dev-base"
+      ],
+      "environment": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "dev",
+      "inherits": [
+        "dev-base"
+      ]
+    },
+    {
+      "name": "default",
+      "inherits": [
+        "dev"
+      ]
     }
   ]
 }

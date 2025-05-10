@@ -1,6 +1,10 @@
+module;
+
 #include <utility>
 
-template <class Func> class Defer {
+export module dashboard.utils:defer;
+
+export template <class Func> class Defer {
 public:
   Defer(Func &&func) : func_{std::forward<Func>(func)} {}
   ~Defer() { func_(); }
