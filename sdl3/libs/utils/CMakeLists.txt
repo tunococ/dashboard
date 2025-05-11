@@ -4,6 +4,6 @@ target_sources(utils
   BASE_DIRS
     interface
   FILES
-    interface/utils/defer.cxx
-    interface/utils/main.cxx
+    interface/utils/defer.cppm
+    interface/utils/main.cppm
 )

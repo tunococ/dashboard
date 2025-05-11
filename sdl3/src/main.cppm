@@ -1,5 +1,3 @@
-module;
-
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -10,8 +8,6 @@ module;
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_assert.h>
 #include <SDL3/SDL_main.h>
-
-export module dashboard;
 
 import dashboard.sdl_glue;
 import dashboard.utils;
