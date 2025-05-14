@@ -1,13 +1,13 @@
-import './style.css'
-import animatedSeal from '../public/seal.png'
-import faceland from '../public/Faceland.png'
-import { ZoomableView } from './components/zoomable-view'
+import "./style.css";
+import faceland from "../public/Faceland.png";
+import animatedSeal from "../public/seal.png";
+import { ZoomableView } from "./components/zoomable-view";
 
-ZoomableView.register()
+ZoomableView.register();
 
-const app = document.getElementById("app")
+const app = document.getElementById("app");
 if (!app) {
-  throw "app is null"
+  throw "app is null";
 }
 
 app.innerHTML = `
@@ -28,34 +28,30 @@ app.innerHTML = `
       </div>
     </zoomable-view>
   </div>
-`
+`;
 //          <img src="${crawlShade}" width=200 style="width:100%; height:100%; object-position: center;" />
 
-const renderArea = document.querySelector("#render-area")
+const renderArea = document.querySelector("#render-area");
 if (!renderArea) {
-  throw "renderArea is null"
+  throw "renderArea is null";
 }
 
-const zoomableView = document.getElementById("zoomable-view") as ZoomableView
+const zoomableView = document.getElementById("zoomable-view") as ZoomableView;
 if (!zoomableView) {
-  throw "zoomableView is null"
+  throw "zoomableView is null";
 }
-zoomableView.style.color = "blue"
+zoomableView.style.color = "blue";
 
-const clock = document.getElementById("clock")
+const clock = document.getElementById("clock");
 {
   if (!clock) {
-    throw "clock is null"
+    throw "clock is null";
   }
-  clock.textContent = " 00:00:00 MM "
-  setInterval(
-    () => {
-      const date = new Date()
-      clock.textContent = ` ${date.toLocaleTimeString()} `
-    },
-    20,
-  )
+  clock.textContent = " 00:00:00 MM ";
+  setInterval(() => {
+    const date = new Date();
+    clock.textContent = ` ${date.toLocaleTimeString()} `;
+  }, 20);
 }
 
-setTimeout(() => zoomableView.zoomToFit(true), 0)
-
+setTimeout(() => zoomableView.zoomToFit(true), 0);

@@ -1,12 +1,15 @@
 :root {
-   box-sizing: border-box;
+  box-sizing: border-box;
 }
 
-*, *:after, *:before {
-   box-sizing: inherit;
+*,
+*:after,
+*:before {
+  box-sizing: inherit;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   border: 0;
@@ -31,4 +34,3 @@ html, body {
   text-shadow: 0.05em 0.05em 0.1em #000;
   font-family: monospace;
 }
-

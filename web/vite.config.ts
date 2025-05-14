@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from "vite";
 
 export default defineConfig({
   base: "/dashboard/",
@@ -6,8 +6,7 @@ export default defineConfig({
   server: {
     host: true,
     watch: {
-      usePolling: true
-    }
+      usePolling: true,
+    },
   },
-})
-
+});

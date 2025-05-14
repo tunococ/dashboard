@@ -1,0 +1,15 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["./src/components/index.ts"],
+  "plugin": ["typedoc-plugin-markdown"],
+  "outputs": [
+    {
+      "name": "html",
+      "path": "./docs/html"
+    },
+    {
+      "name": "markdown",
+      "path": "./docs/markdown"
+    }
+  ]
+}

@@ -9,29 +9,47 @@ const defaultAttributes: Record<string, any> = {
   "view-margin-left": 0,
   "view-offset-x": 0,
   "view-offset-y": 0,
-}
+};
 
-type AttributeName = keyof typeof defaultAttributes
+type AttributeName = keyof typeof defaultAttributes;
 
-type Point2D = { x: number; y: number; }
+export type Point2D = { x: number; y: number };
 
+/**
+ * Web component of a zoomable view.
+ *
+ * {@link ZoomableView} is a custom web element that supports zooming and panning.
+ *
+ * The structure of {@link ZoomableView} is as follows:
+ * ```
+ * <div id="container" part="container">
+ *   <div id="background">
+ *     <slot name="background"></slot>
+ *   </div>
+ *   <div id="content">
+ *     <slot></slot>
+ *   </div>
+ * </div>
+ * ```
+ */
 export class ZoomableView extends HTMLElement {
-
-  static register(name: string = "zoomable-view") {
-    customElements.define(
-      name,
-      ZoomableView,
-    )
+  /**
+   * Register {@link ZoomableView} as an HTML element with tag `tagName`.
+   *
+   * @param tagName Desired tag name
+   */
+  static register(tagName: string = "zoomable-view") {
+    customElements.define(tagName, ZoomableView);
   }
 
-  container: HTMLDivElement
-  content: HTMLDivElement
-  background: HTMLDivElement
+  container: HTMLDivElement;
+  content: HTMLDivElement;
+  background: HTMLDivElement;
 
   constructor() {
-    super()
+    super();
 
-    const template = document.createElement("template")
+    const template = document.createElement("template");
     template.innerHTML = `
       <style>
         * {
@@ -69,147 +87,154 @@ export class ZoomableView extends HTMLElement {
           <slot></slot>
         </div>
       </div>
-    `
+    `;
 
-    const shadowRoot = this.attachShadow({ mode: "open" })
-    shadowRoot.append(template.content.cloneNode(true))
+    const shadowRoot = this.attachShadow({ mode: "open" });
+    shadowRoot.append(template.content.cloneNode(true));
 
-    const container = shadowRoot.getElementById("container") as HTMLDivElement
-    const content = shadowRoot.getElementById("content") as HTMLDivElement
-    const background = shadowRoot.getElementById("background") as HTMLDivElement
+    const container = shadowRoot.getElementById("container") as HTMLDivElement;
+    const content = shadowRoot.getElementById("content") as HTMLDivElement;
+    const background = shadowRoot.getElementById(
+      "background",
+    ) as HTMLDivElement;
 
-    this.container = container
-    this.background = background
-    this.content = content
+    this.container = container;
+    this.background = background;
+    this.content = content;
 
     // Set up event listeners
 
-    this.container.addEventListener("wheel", (e: Event) => this.onWheelEvent(e))
+    this.container.addEventListener("wheel", (e: Event) =>
+      this.onWheelEvent(e),
+    );
 
-    const onPointerEvent = (e: Event) => this.onPointerEvent(e)
-    this.container.addEventListener("pointerdown", onPointerEvent)
-    this.container.addEventListener("pointerup", onPointerEvent)
-    this.container.addEventListener("pointermove", onPointerEvent)
-    this.container.addEventListener("pointercancel", onPointerEvent)
+    const onPointerEvent = (e: Event) => this.onPointerEvent(e);
+    this.container.addEventListener("pointerdown", onPointerEvent);
+    this.container.addEventListener("pointerup", onPointerEvent);
+    this.container.addEventListener("pointermove", onPointerEvent);
+    this.container.addEventListener("pointercancel", onPointerEvent);
 
     const resizeObserver = new ResizeObserver(() => {
-      this.onContentResized()
-    })
-    resizeObserver.observe(container, { box: "border-box" })
-    resizeObserver.observe(content, { box: "border-box" })
+      this.onContentResized();
+    });
+    resizeObserver.observe(container, { box: "border-box" });
+    resizeObserver.observe(content, { box: "border-box" });
   }
 
-  static readonly observedAttributes = Object.keys(defaultAttributes)
+  static readonly observedAttributes = Object.keys(defaultAttributes);
 
   protected getNumberAttribute(name: AttributeName): number {
-    const num = parseFloat(this.getAttribute(name)!)
-    return isNaN(num) ? defaultAttributes[name] : num;
+    const num = Number.parseFloat(this.getAttribute(name)!);
+    return Number.isNaN(num) ? defaultAttributes[name] : num;
   }
 
   get zoomSpeed(): number {
-    return this.getNumberAttribute("zoom-speed")
+    return this.getNumberAttribute("zoom-speed");
   }
   set zoomSpeed(value: any) {
-    this.setAttribute("zoom-speed", value.toString())
+    this.setAttribute("zoom-speed", value.toString());
   }
   get minZoom(): number {
-    return this.getNumberAttribute("min-zoom")
+    return this.getNumberAttribute("min-zoom");
   }
   set minZoom(value: any) {
-    this.setAttribute("min-zoom", value.toString())
+    this.setAttribute("min-zoom", value.toString());
   }
   get maxZoom(): number {
-    return this.getNumberAttribute("max-zoom")
+    return this.getNumberAttribute("max-zoom");
   }
   set maxZoom(value: any) {
-    this.setAttribute("max-zoom", value.toString())
+    this.setAttribute("max-zoom", value.toString());
   }
   get currentZoom(): number {
-    return this.getNumberAttribute("current-zoom")
+    return this.getNumberAttribute("current-zoom");
   }
   set currentZoom(value: any) {
-    this.setAttribute("current-zoom", value.toString())
+    this.setAttribute("current-zoom", value.toString());
   }
   get viewMarginTop(): number {
-    return this.getNumberAttribute("view-margin-top")
+    return this.getNumberAttribute("view-margin-top");
   }
   set viewMarginTop(value: any) {
-    this.setAttribute("view-margin-top", value.toString())
+    this.setAttribute("view-margin-top", value.toString());
   }
   get viewMarginRight(): number {
-    return this.getNumberAttribute("view-margin-right")
+    return this.getNumberAttribute("view-margin-right");
   }
   set viewMarginRight(value: any) {
-    this.setAttribute("view-margin-right", value.toString())
+    this.setAttribute("view-margin-right", value.toString());
   }
   get viewMarginBottom(): number {
-    return this.getNumberAttribute("view-margin-bottom")
+    return this.getNumberAttribute("view-margin-bottom");
   }
   set viewMarginBottom(value: any) {
-    this.setAttribute("view-margin-bottom", value.toString())
+    this.setAttribute("view-margin-bottom", value.toString());
   }
   get viewMarginLeft(): number {
-    return this.getNumberAttribute("view-margin-left")
+    return this.getNumberAttribute("view-margin-left");
   }
   set viewMarginLeft(value: any) {
-    this.setAttribute("view-margin-left", value.toString())
+    this.setAttribute("view-margin-left", value.toString());
   }
   get viewOffsetX(): number {
-    return this.getNumberAttribute("view-offset-x")
+    return this.getNumberAttribute("view-offset-x");
   }
   set viewOffsetX(value: any) {
-    this.setAttribute("view-offset-x", value.toString())
+    this.setAttribute("view-offset-x", value.toString());
   }
   get viewOffsetY(): number {
-    return this.getNumberAttribute("view-offset-y")
+    return this.getNumberAttribute("view-offset-y");
   }
   set viewOffsetY(value: any) {
-    this.setAttribute("view-offset-y", value.toString())
+    this.setAttribute("view-offset-y", value.toString());
   }
-  minViewOffsetX: number = 0
-  maxViewOffsetX: number = 0
-  minViewOffsetY: number = 0
-  maxViewOffsetY: number = 0
+  minViewOffsetX: number = 0;
+  maxViewOffsetX: number = 0;
+  minViewOffsetY: number = 0;
+  maxViewOffsetY: number = 0;
 
   connectedCallback() {
-    this.update()
+    this.update();
   }
 
   attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
     switch (name) {
       case "current-zoom": {
-        this.content.style.setProperty("transform", `scale(${this.currentZoom})`)
-        this.updateViewOffsetBounds()
-        this.validateViewOffsetX()
-        this.validateViewOffsetY()
-        break
+        this.content.style.setProperty(
+          "transform",
+          `scale(${this.currentZoom})`,
+        );
+        this.updateViewOffsetBounds();
+        this.validateViewOffsetX();
+        this.validateViewOffsetY();
+        break;
       }
       case "min-zoom":
       case "max-zoom": {
-        this.validateZoom()
-        this.updateViewOffsetBounds()
-        this.validateViewOffsetX()
-        this.validateViewOffsetY()
-        break
+        this.validateZoom();
+        this.updateViewOffsetBounds();
+        this.validateViewOffsetX();
+        this.validateViewOffsetY();
+        break;
       }
       case "view-offset-x": {
-        const viewOffsetX = parseFloat(newValue)
-        this.content.style.setProperty("left", `${viewOffsetX}px`)
-        break
+        const viewOffsetX = Number.parseFloat(newValue);
+        this.content.style.setProperty("left", `${viewOffsetX}px`);
+        break;
       }
       case "view-offset-y": {
-        const viewOffsetY = parseFloat(newValue)
-        this.content.style.setProperty("top", `${viewOffsetY}px`)
-        break
+        const viewOffsetY = Number.parseFloat(newValue);
+        this.content.style.setProperty("top", `${viewOffsetY}px`);
+        break;
       }
       case "view-margin-top":
       case "view-margin-right":
       case "view-margin-bottom":
       case "view-margin-left": {
-        this.updateViewOffsetBounds()
-        this.validateViewOffsetX()
-        this.validateViewOffsetY()
-        break
+        this.updateViewOffsetBounds();
+        this.validateViewOffsetX();
+        this.validateViewOffsetY();
+        break;
       }
     }
   }
@@ -222,110 +247,155 @@ export class ZoomableView extends HTMLElement {
    * @param upperBound The upper bound of the interval.
    * @returns `true` iff `this[attr]` has been changed.
    */
-  protected validateBoundedAttribute(attr: AttributeName, lowerBound: number, upperBound: number): boolean {
+  protected validateBoundedAttribute(
+    attr: AttributeName,
+    lowerBound: number,
+    upperBound: number,
+  ): boolean {
     const currentValue = this.getNumberAttribute(attr);
-    const newValue = clamp(currentValue, lowerBound, upperBound)
+    const newValue = clamp(currentValue, lowerBound, upperBound);
     if (newValue === currentValue) {
       return false;
     }
-    this.setAttribute(attr, newValue.toString())
+    this.setAttribute(attr, newValue.toString());
     return true;
   }
 
-  protected setBoundedAttribute(attr: AttributeName, newValue: number, lowerBound: number, upperBound: number): boolean {
-    newValue = clamp(newValue, lowerBound, upperBound)
+  protected setBoundedAttribute(
+    attr: AttributeName,
+    newValue: number,
+    lowerBound: number,
+    upperBound: number,
+  ): boolean {
+    newValue = clamp(newValue, lowerBound, upperBound);
     if (this.getNumberAttribute(attr) === newValue) {
-      return false
+      return false;
     }
-    this.setAttribute(attr, newValue.toString())
-    return true
+    this.setAttribute(attr, newValue.toString());
+    return true;
   }
 
   setZoom(newZoom: number, keepCenter: boolean = true): boolean {
     if (keepCenter) {
-      let currentZoom = this.currentZoom
-      const centerX = this.viewOffsetX / currentZoom
-      const centerY = this.viewOffsetY / currentZoom
+      let currentZoom = this.currentZoom;
+      const centerX = this.viewOffsetX / currentZoom;
+      const centerY = this.viewOffsetY / currentZoom;
 
-      let changed: boolean = false
-      changed ||= this.setBoundedAttribute("current-zoom", newZoom, this.minZoom, this.maxZoom)
+      let changed: boolean = false;
+      changed ||= this.setBoundedAttribute(
+        "current-zoom",
+        newZoom,
+        this.minZoom,
+        this.maxZoom,
+      );
 
-      currentZoom = this.currentZoom
-      const newViewOffsetX = centerX * currentZoom
-      const newViewOffsetY = centerY * currentZoom
+      currentZoom = this.currentZoom;
+      const newViewOffsetX = centerX * currentZoom;
+      const newViewOffsetY = centerY * currentZoom;
 
-      this.updateViewOffsetBounds()
-      changed ||= this.setViewOffset(newViewOffsetX, newViewOffsetY)
-      return changed
+      this.updateViewOffsetBounds();
+      changed ||= this.setViewOffset(newViewOffsetX, newViewOffsetY);
+      return changed;
     }
-    return this.setBoundedAttribute("current-zoom", newZoom, this.minZoom, this.maxZoom)
+    return this.setBoundedAttribute(
+      "current-zoom",
+      newZoom,
+      this.minZoom,
+      this.maxZoom,
+    );
   }
 
   protected validateZoom(): boolean {
-    return this.validateBoundedAttribute("current-zoom", this.minZoom, this.maxZoom)
+    return this.validateBoundedAttribute(
+      "current-zoom",
+      this.minZoom,
+      this.maxZoom,
+    );
   }
 
   getScaleToFit(): number {
     return Math.min(
       this.container.clientWidth / this.content.offsetWidth,
       this.container.clientHeight / this.content.offsetHeight,
-    )
+    );
   }
 
   zoomToFit(adjustBounds: boolean = false): boolean {
-    const scaleToFit = this.getScaleToFit()
+    const scaleToFit = this.getScaleToFit();
     if (adjustBounds) {
       if (scaleToFit > this.maxZoom) {
-        this.maxZoom = scaleToFit
+        this.maxZoom = scaleToFit;
       }
       if (scaleToFit < this.minZoom) {
-        this.minZoom = scaleToFit
+        this.minZoom = scaleToFit;
       }
     }
-    return this.setZoom(scaleToFit)
+    return this.setZoom(scaleToFit);
   }
 
   setViewOffsetX(newViewOffsetX: number): boolean {
-    return this.setBoundedAttribute("view-offset-x", newViewOffsetX, this.minViewOffsetX, this.maxViewOffsetX)
+    return this.setBoundedAttribute(
+      "view-offset-x",
+      newViewOffsetX,
+      this.minViewOffsetX,
+      this.maxViewOffsetX,
+    );
   }
 
   setViewOffsetY(newViewOffsetY: number): boolean {
-    return this.setBoundedAttribute("view-offset-y", newViewOffsetY, this.minViewOffsetY, this.maxViewOffsetY)
+    return this.setBoundedAttribute(
+      "view-offset-y",
+      newViewOffsetY,
+      this.minViewOffsetY,
+      this.maxViewOffsetY,
+    );
   }
 
   setViewOffset(newViewOffsetX: number, newViewOffsetY: number) {
-    const offsetXUpdated = this.setViewOffsetX(newViewOffsetX)
-    const offsetYUpdated = this.setViewOffsetY(newViewOffsetY)
-    return offsetXUpdated || offsetYUpdated
+    const offsetXUpdated = this.setViewOffsetX(newViewOffsetX);
+    const offsetYUpdated = this.setViewOffsetY(newViewOffsetY);
+    return offsetXUpdated || offsetYUpdated;
   }
 
   scrollView(deltaX?: number, deltaY?: number) {
-    if (deltaX != undefined) {
-      this.setViewOffsetX(clamp(this.viewOffsetX + deltaX, this.minViewOffsetX, this.maxViewOffsetX))
+    if (deltaX != null) {
+      this.setViewOffsetX(
+        clamp(
+          this.viewOffsetX + deltaX,
+          this.minViewOffsetX,
+          this.maxViewOffsetX,
+        ),
+      );
     }
-    if (deltaY != undefined) {
-      this.setViewOffsetY(clamp(this.viewOffsetY + deltaY, this.minViewOffsetY, this.maxViewOffsetY))
+    if (deltaY != null) {
+      this.setViewOffsetY(
+        clamp(
+          this.viewOffsetY + deltaY,
+          this.minViewOffsetY,
+          this.maxViewOffsetY,
+        ),
+      );
     }
   }
 
   protected updateViewOffsetBounds() {
-    const currentZoom = this.currentZoom
+    const currentZoom = this.currentZoom;
 
-    const halfContainerWidth = 0.5 * this.container.clientWidth
-    const halfContentOffsetWidth = 0.5 * this.content.offsetWidth
+    const halfContainerWidth = 0.5 * this.container.clientWidth;
+    const halfContentOffsetWidth = 0.5 * this.content.offsetWidth;
 
     // Compute the length of `content` (including `viewLeftMargin`) on the left
     // of the origin.
-    const leftContentWidth = halfContentOffsetWidth + this.viewMarginLeft
+    const leftContentWidth = halfContentOffsetWidth + this.viewMarginLeft;
     // Excess is positive if the left side of the content spills cannot be
     // contained inside `container`; otherwise it is negative, and its absolute
     // value is the leftover space that `container` has on the left of
     // `content`.
-    const leftExcess = leftContentWidth * currentZoom - halfContainerWidth
+    const leftExcess = leftContentWidth * currentZoom - halfContainerWidth;
 
     // Compute the same 2 numbers as above for the right side.
-    const rightContentWidth = halfContentOffsetWidth + this.viewMarginRight
-    const rightExcess = rightContentWidth * currentZoom - halfContainerWidth
+    const rightContentWidth = halfContentOffsetWidth + this.viewMarginRight;
+    const rightExcess = rightContentWidth * currentZoom - halfContainerWidth;
 
     // Note: the following may be non-trivial.
     //
@@ -343,51 +413,62 @@ export class ZoomableView extends HTMLElement {
     // far enough to see the full left part of `content` including
     // `viewLeftMargin`. This corresponds to the term `leftExcess` in the
     // expression below.
-    this.minViewOffsetX = Math.min(leftExcess, -rightExcess)
+    this.minViewOffsetX = Math.min(leftExcess, -rightExcess);
     // The formula for `maxViewOffsetX` is derived in a similar fashion.
-    this.maxViewOffsetX = Math.max(leftExcess, -rightExcess)
+    this.maxViewOffsetX = Math.max(leftExcess, -rightExcess);
 
     // Now we do the same thing with the y-axis.
-    const halfContainerHeight = 0.5 * this.container.clientHeight
-    const halfContentOffsetHeight = 0.5 * this.content.offsetHeight
+    const halfContainerHeight = 0.5 * this.container.clientHeight;
+    const halfContentOffsetHeight = 0.5 * this.content.offsetHeight;
 
-    const topContentHeight = halfContentOffsetHeight + this.viewMarginTop * currentZoom
-    const topExcess = topContentHeight * currentZoom - halfContainerHeight
+    const topContentHeight =
+      halfContentOffsetHeight + this.viewMarginTop * currentZoom;
+    const topExcess = topContentHeight * currentZoom - halfContainerHeight;
 
-    const bottomContentHeight = halfContentOffsetHeight + this.viewMarginBottom * currentZoom
-    const bottomExcess = bottomContentHeight * currentZoom - halfContainerHeight
+    const bottomContentHeight =
+      halfContentOffsetHeight + this.viewMarginBottom * currentZoom;
+    const bottomExcess =
+      bottomContentHeight * currentZoom - halfContainerHeight;
 
-    this.minViewOffsetY = Math.min(topExcess, -bottomExcess)
-    this.maxViewOffsetY = Math.max(topExcess, -bottomExcess)
+    this.minViewOffsetY = Math.min(topExcess, -bottomExcess);
+    this.maxViewOffsetY = Math.max(topExcess, -bottomExcess);
   }
 
   protected validateViewOffsetX(): boolean {
-    return this.validateBoundedAttribute("view-offset-x", this.minViewOffsetX, this.maxViewOffsetX)
+    return this.validateBoundedAttribute(
+      "view-offset-x",
+      this.minViewOffsetX,
+      this.maxViewOffsetX,
+    );
   }
 
   protected validateViewOffsetY(): boolean {
-    return this.validateBoundedAttribute("view-offset-y", this.minViewOffsetY, this.maxViewOffsetY)
+    return this.validateBoundedAttribute(
+      "view-offset-y",
+      this.minViewOffsetY,
+      this.maxViewOffsetY,
+    );
   }
 
   /**
    * Forces the component to update.
    */
   update() {
-    this.updateViewOffsetBounds()
-    this.validateZoom()
-    this.validateViewOffsetX()
-    this.validateViewOffsetY()
+    this.updateViewOffsetBounds();
+    this.validateZoom();
+    this.validateViewOffsetX();
+    this.validateViewOffsetY();
   }
 
   protected onContentResized() {
-    this.updateViewOffsetBounds()
+    this.updateViewOffsetBounds();
   }
 
   protected onWheelEvent(e: Event) {
-    const event = e as WheelEvent
-    if (event.deltaY != undefined) {
-      setTimeout(() => { }, 0)
-      let deltaY = event.deltaY
+    const event = e as WheelEvent;
+    if (event.deltaY != null) {
+      setTimeout(() => {}, 0);
+      let deltaY = event.deltaY;
       switch (event.deltaMode) {
         // It is unclear if this will ever happen.
         // We use the same fallback logic as `DOM_DELTA_LINE` for now.
@@ -396,94 +477,92 @@ export class ZoomableView extends HTMLElement {
           // TODO: Replace 17 with a not-so-magic number.
           // This is a workaround for Firefox as it seems like only Firefox
           // fires this event with `deltaMode = DOM_DELTA_LINE`.
-          deltaY = event.deltaY * 17
-          break
+          deltaY = event.deltaY * 17;
+          break;
         }
       }
-      const newZoom = this.currentZoom * (2 ** (-this.zoomSpeed * deltaY))
-      this.setZoom(newZoom)
-      event.preventDefault()
+      const newZoom = this.currentZoom * 2 ** (-this.zoomSpeed * deltaY);
+      this.setZoom(newZoom);
+      event.preventDefault();
     }
   }
 
-  protected pointers: { id: number; x: number; y: number; }[] = []
+  protected pointers: { id: number; x: number; y: number }[] = [];
 
-  protected pointerScrolling: boolean = false
-  protected pointerScrollTracking: boolean = false
-  protected pointerLastCentroid: Point2D = { x: 0, y: 0 }
+  protected pointerScrolling: boolean = false;
+  protected pointerScrollTracking: boolean = false;
+  protected pointerLastCentroid: Point2D = { x: 0, y: 0 };
 
-  protected pointerZooming: boolean = false
-  protected pointerZoomTracking: boolean = false
-  protected pointerLastRadius: number = 0
+  protected pointerZooming: boolean = false;
+  protected pointerZoomTracking: boolean = false;
+  protected pointerLastRadius: number = 0;
 
   protected onPointerEvent(e: Event) {
-    const event = e as PointerEvent
+    const event = e as PointerEvent;
     const pointer = {
       id: event.pointerId,
-      ...transformFromScreenCoordinates(this, event.pageX, event.pageY)
-    }
+      ...transformFromScreenCoordinates(this, event.pageX, event.pageY),
+    };
 
     if (event.type === "pointerdown") {
-      this.pointers.push(pointer)
+      this.pointers.push(pointer);
       if (this.pointers.length === 1) {
         // Start scrolling
-        this.pointerScrolling = true
+        this.pointerScrolling = true;
       } else if (this.pointers.length === 2) {
         // Start zooming
-        this.pointerZooming = true
+        this.pointerZooming = true;
       }
-      this.pointerLastCentroid = centroid(this.pointers)
+      this.pointerLastCentroid = centroid(this.pointers);
       this.pointerLastRadius = average(
-        this.pointers.map(p => distance(p, this.pointerLastCentroid))
-      )
-      event.preventDefault()
+        this.pointers.map((p) => distance(p, this.pointerLastCentroid)),
+      );
+      event.preventDefault();
     } else {
-      const index = this.pointers.findIndex(
-        pe => pe.id === pointer.id
-      )
+      const index = this.pointers.findIndex((pe) => pe.id === pointer.id);
       if (index < 0) {
-        return
+        return;
       }
       switch (event.type) {
         case "pointermove": {
-          this.container.setPointerCapture(event.pointerId)
-          const newCentroid = centroid(this.pointers)
-          this.pointers[index] = pointer
+          this.container.setPointerCapture(event.pointerId);
+          const newCentroid = centroid(this.pointers);
+          this.pointers[index] = pointer;
           if (this.pointerScrolling) {
             this.scrollView(
               newCentroid.x - this.pointerLastCentroid.x,
               newCentroid.y - this.pointerLastCentroid.y,
-            )
-            this.pointerLastCentroid = newCentroid
+            );
+            this.pointerLastCentroid = newCentroid;
           }
           if (this.pointerZooming) {
             const newRadius = average(
-              this.pointers.map(p => distance(p, newCentroid))
-            )
-            const zoomMultiple = newRadius / this.pointerLastRadius
-            this.setZoom(this.currentZoom * zoomMultiple)
-            this.pointerLastRadius = newRadius
+              this.pointers.map((p) => distance(p, newCentroid)),
+            );
+            const zoomMultiple = newRadius / this.pointerLastRadius;
+            this.setZoom(this.currentZoom * zoomMultiple);
+            this.pointerLastRadius = newRadius;
           }
-          event.preventDefault()
-          event.stopPropagation()
-          break
+          event.preventDefault();
+          event.stopPropagation();
+          break;
         }
         case "pointercancel":
         case "pointerup": {
           // Tracking is reset every time a pointer is removed.
-          this.pointers.splice(index, 1)
+          this.pointers.splice(index, 1);
           if (this.pointers.length === 1) {
-            this.pointerZooming = false
+            this.pointerZooming = false;
           } else if (this.pointers.length === 0) {
-            this.pointerScrolling = false
+            this.pointerScrolling = false;
           }
-          this.pointerLastCentroid = centroid(this.pointers)
+          this.pointerLastCentroid = centroid(this.pointers);
           this.pointerLastRadius = average(
-            this.pointers.map(p => distance(p, this.pointerLastCentroid))
-          )
-          event.preventDefault()
-          event.stopPropagation()
-          break
+            this.pointers.map((p) => distance(p, this.pointerLastCentroid)),
+          );
+          event.preventDefault();
+          event.stopPropagation();
+          break;
         }
       }
     }
@@ -496,43 +575,46 @@ export class ZoomableView extends HTMLElement {
  * If `upperBound < lowerBound`, `lowerBound` will be returned.
  */
 function clamp(value: number, lowerBound: number, upperBound: number): number {
-  return Math.max(Math.min(value, upperBound), lowerBound)
+  return Math.max(Math.min(value, upperBound), lowerBound);
 }
 
 function average(nums: Iterable<number>): number {
-  let i = 0
-  let sum = 0
+  let i = 0;
+  let sum = 0;
   for (const num of nums) {
     sum += num;
-    ++i
+    ++i;
   }
-  return i == 0 ? 0 : sum / i
+  return i === 0 ? 0 : sum / i;
 }
 
 function centroid(points: Iterable<Point2D>): Point2D {
-  let i = 0
-  let sumX = 0
-  let sumY = 0
+  let i = 0;
+  let sumX = 0;
+  let sumY = 0;
   for (const { x, y } of points) {
-    sumX += x
-    sumY += y
-    ++i
+    sumX += x;
+    sumY += y;
+    ++i;
   }
-  return i == 0 ? { x: 0, y: 0 } : { x: sumX / i, y: sumY / i }
+  return i === 0 ? { x: 0, y: 0 } : { x: sumX / i, y: sumY / i };
 }
 
 function distance(p: Point2D, q: Point2D): number {
-  return Math.sqrt((p.x - q.x) ** 2 + (p.y - q.y) ** 2)
+  return Math.sqrt((p.x - q.x) ** 2 + (p.y - q.y) ** 2);
 }
 
-function transformFromScreenCoordinates(element: Element, x: number, y: number): Point2D {
-  let e: Element | null = element
-  let m: DOMMatrixReadOnly = new DOMMatrixReadOnly()
+function transformFromScreenCoordinates(
+  element: Element,
+  x: number,
+  y: number,
+): Point2D {
+  let e: Element | null = element;
+  let m: DOMMatrixReadOnly = new DOMMatrixReadOnly();
   while (e) {
-    m = (new DOMMatrixReadOnly(getComputedStyle(e).transform)).multiply(m)
-    e = e.parentElement
+    m = new DOMMatrixReadOnly(getComputedStyle(e).transform).multiply(m);
+    e = e.parentElement;
   }
-  const point = (new DOMPointReadOnly(x, y)).matrixTransform(m.inverse())
-  return { x: point.x, y: point.y }
+  const point = new DOMPointReadOnly(x, y).matrixTransform(m.inverse());
+  return { x: point.x, y: point.y };
 }
-
