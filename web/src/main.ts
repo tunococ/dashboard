@@ -2,6 +2,7 @@ import "./style.css";
 import faceland from "../public/Faceland.png";
 import animatedSeal from "../public/seal.png";
 import fuecoco from "../public/Fuecoco.png";
+import daiki from "../public/Daiki.png";
 import { ZoomableView } from "./components/zoomable-view";
 
 ZoomableView.register();
@@ -23,8 +24,7 @@ app.innerHTML = `
         <div style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
           <img src="${animatedSeal}" width=70 />
           <img src="${fuecoco}" width=70 />
-          <img src="${animatedSeal}" width=70 />
-          <img src="${fuecoco}" width=70 />
+          <img src="${daiki}" width=70 />
         </div>
       </div>
     </zoomable-view>
