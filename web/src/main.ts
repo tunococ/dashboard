@@ -3,6 +3,7 @@ import faceland from "../public/Faceland.png";
 import animatedSeal from "../public/seal.png";
 import fuecoco from "../public/Fuecoco.png";
 import daiki from "../public/Daiki.png";
+import cabbaggy from "../public/cabbaggy.png";
 import { ZoomableView } from "./components/zoomable-view";
 
 ZoomableView.register();
@@ -25,6 +26,7 @@ app.innerHTML = `
           <img src="${animatedSeal}" width=70 />
           <img src="${fuecoco}" width=70 />
           <img src="${daiki}" width=70 />
+          <img src="${cabbaggy}" width=70 />
         </div>
       </div>
     </zoomable-view>
