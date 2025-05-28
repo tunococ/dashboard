@@ -17,10 +17,10 @@ if (!app) {
 app.innerHTML = `
   <div id="render-area">
     <zoomable-view id="zoomable-view"
-      view-margin-left="-50vw"
-      view-margin-right="-50vw"
-      view-margin-top="-50vh"
-      view-margin-bottom="-50vh"
+      view-margin-left="-1000vw"
+      view-margin-right="-1000vw"
+      view-margin-top="-1000vh"
+      view-margin-bottom="-1000vh"
     >
       <div slot="background" style="position: relative; width: 100%; height: 100%;">
         <img src="${faceland}" style="display: block; width:100%; height:100%; object-fit: cover; object-position: center;" />
