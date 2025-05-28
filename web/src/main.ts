@@ -1,10 +1,10 @@
 import "./style.css";
-import faceland from "../public/Faceland.png";
-import animatedSeal from "../public/seal.png";
-import fuecoco from "../public/Fuecoco.png";
 import daiki from "../public/Daiki.png";
-import cabbaggy from "../public/cabbaggy.png";
+import faceland from "../public/Faceland.png";
+import fuecoco from "../public/Fuecoco.png";
 import guangdang from "../public/Guangdang.png";
+import cabbaggy from "../public/cabbaggy.png";
+import animatedSeal from "../public/seal.png";
 import { ZoomableView } from "./components/zoomable-view";
 
 ZoomableView.register();
@@ -22,8 +22,17 @@ app.innerHTML = `
       view-margin-top="-1000vh"
       view-margin-bottom="-1000vh"
     >
-      <div slot="background" style="position: relative; width: 100%; height: 100%;">
+      <div slot="background" id="background" style="position: relative; width: 100%; height: 100%;">
         <img src="${faceland}" style="display: block; width:100%; height:100%; object-fit: cover; object-position: center;" />
+      </div>
+      <div slot="overlay" id="overlay" style="position: relative; width: 100%; height: 100%;">
+        <div style="position: absolute; bottom: 1rem; right: 1rem;">
+          <button id="zoom-to-fit">Zoom to fit</button>
+          <button id="toggle-fullscreen"></button>
+        </div>
+        <div style="position: absolute; top: 1rem; right: 1rem;">
+          <button id="login">Log in</button>
+        </div>
       </div>
       <div id="dashboard" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
         <div id="clock" style="white-space:pre;">
@@ -39,7 +48,6 @@ app.innerHTML = `
     </zoomable-view>
   </div>
 `;
-//          <img src="${crawlShade}" width=200 style="width:100%; height:100%; object-position: center;" />
 
 const renderArea = document.querySelector("#render-area");
 if (!renderArea) {
@@ -51,6 +59,80 @@ if (!zoomableView) {
   throw "zoomableView is null";
 }
 zoomableView.style.color = "blue";
+
+// Background
+const background = document.getElementById("background")
+if (!background) {
+  throw "background is null";
+}
+
+let hideOverlay: number | undefined = undefined
+background.addEventListener("pointermove", (event: PointerEvent) => {
+  clearTimeout(hideOverlay);
+  overlay.style.opacity = "1";
+  hideOverlay = setTimeout(() => {
+    overlay.style.opacity = "0";
+  }, 5000);
+})
+
+// Overlay
+const overlay = document.getElementById("overlay") as HTMLDivElement;
+if (!overlay) {
+  throw "overlay is null";
+}
+overlay.addEventListener("pointermove", () => {
+  clearTimeout(hideOverlay);
+  overlay.style.opacity = "1";
+  hideOverlay = setTimeout(() => {
+    overlay.style.opacity = "0";
+  }, 1500);
+})
+
+const toggleFullscreenButton = document.getElementById("toggle-fullscreen");
+if (!toggleFullscreenButton) {
+  throw "toggleFullscreenButton is null";
+}
+const updateToggleFullscreenButton = () => {
+  if (document.fullscreenElement) {
+    toggleFullscreenButton.textContent = "Exit fullscreen";
+  } else {
+    toggleFullscreenButton.textContent = "Enter fullscreen";
+  }
+};
+document.addEventListener("fullscreenchange", updateToggleFullscreenButton);
+toggleFullscreenButton.addEventListener("click", (event: MouseEvent) => {
+  if (event.target === toggleFullscreenButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      renderArea.requestFullscreen();
+    }
+    updateToggleFullscreenButton();
+  }
+});
+updateToggleFullscreenButton();
+
+const zoomToFitButton = document.getElementById("zoom-to-fit");
+if (!zoomToFitButton) {
+  throw "zoomToFitButton is null";
+}
+zoomToFitButton.addEventListener("click", (event: MouseEvent) => {
+  if (event.target === zoomToFitButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    zoomableView.setViewOffset(0, 0);
+    zoomableView.zoomToFit(true);
+  }
+})
+
+const loginButton = document.getElementById("login");
+if (!loginButton) {
+  throw "loginButton is null";
+}
+
+// Content
 
 const clock = document.getElementById("clock");
 {
