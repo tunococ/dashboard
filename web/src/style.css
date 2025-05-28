@@ -34,3 +34,8 @@ body {
   text-shadow: 0.05em 0.05em 0.1em #000;
   font-family: monospace;
 }
+
+#overlay {
+  transition: opacity 0.5s ease 0s;
+  opacity: 0;
+}

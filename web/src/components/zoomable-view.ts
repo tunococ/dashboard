@@ -45,6 +45,7 @@ export class ZoomableView extends HTMLElement {
   container: HTMLDivElement;
   content: HTMLDivElement;
   background: HTMLDivElement;
+  overlay: HTMLDivElement;
 
   constructor() {
     super();
@@ -74,9 +75,16 @@ export class ZoomableView extends HTMLElement {
           height: 100%;
           z-index: -1;
         }
+        #overlay {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          z-index: 1;
+        }
         #content {
           position: relative;
           overflow: hidden;
+          z-index: 0;
         }
       </style>
       <div id="container" part="container">
@@ -85,6 +93,9 @@ export class ZoomableView extends HTMLElement {
         </div>
         <div id="content">
           <slot></slot>
+        </div>
+        <div id="overlay">
+          <slot name="overlay"></slot>
         </div>
       </div>
     `;
@@ -97,10 +108,12 @@ export class ZoomableView extends HTMLElement {
     const background = shadowRoot.getElementById(
       "background",
     ) as HTMLDivElement;
+    const overlay = shadowRoot.getElementById("overlay") as HTMLDivElement;
 
     this.container = container;
     this.background = background;
     this.content = content;
+    this.overlay = overlay;
 
     // Set up event listeners
 
