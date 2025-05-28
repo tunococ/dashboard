@@ -4,6 +4,7 @@ import animatedSeal from "../public/seal.png";
 import fuecoco from "../public/Fuecoco.png";
 import daiki from "../public/Daiki.png";
 import cabbaggy from "../public/cabbaggy.png";
+import guangdang from "../public/Guangdang.png";
 import { ZoomableView } from "./components/zoomable-view";
 
 ZoomableView.register();
@@ -15,7 +16,12 @@ if (!app) {
 
 app.innerHTML = `
   <div id="render-area">
-    <zoomable-view id="zoomable-view" view-margin-left=10 view-margin-right=10>
+    <zoomable-view id="zoomable-view"
+      view-margin-left="-50vw"
+      view-margin-right="-50vw"
+      view-margin-top="-50vh"
+      view-margin-bottom="-50vh"
+    >
       <div slot="background" style="position: relative; width: 100%; height: 100%;">
         <img src="${faceland}" style="display: block; width:100%; height:100%; object-fit: cover; object-position: center;" />
       </div>
@@ -27,6 +33,7 @@ app.innerHTML = `
           <img src="${fuecoco}" width=70 />
           <img src="${daiki}" width=70 />
           <img src="${cabbaggy}" width=70 />
+          <img src="${guangdang}" width=70 />
         </div>
       </div>
     </zoomable-view>
