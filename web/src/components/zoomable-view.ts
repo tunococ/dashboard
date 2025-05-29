@@ -42,6 +42,8 @@ export class ZoomableView extends HTMLElement {
     customElements.define(tagName, ZoomableView);
   }
 
+  static readonly observedAttributes = Object.keys(defaultAttributes);
+
   container: HTMLDivElement;
   content: HTMLDivElement;
   background: HTMLDivElement;
@@ -77,12 +79,14 @@ export class ZoomableView extends HTMLElement {
         }
         #overlay {
           position: absolute;
+          pointer-events: none;
           width: 100%;
           height: 100%;
           z-index: 1;
         }
         #content {
           position: relative;
+          pointer-events: none;
           overflow: hidden;
           z-index: 0;
         }
@@ -133,8 +137,6 @@ export class ZoomableView extends HTMLElement {
     resizeObserver.observe(container, { box: "border-box" });
     resizeObserver.observe(content, { box: "border-box" });
   }
-
-  static readonly observedAttributes = Object.keys(defaultAttributes);
 
   protected getNumberAttribute(name: AttributeName): number {
     const num = Number.parseFloat(this.getAttribute(name)!);
