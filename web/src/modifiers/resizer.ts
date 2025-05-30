@@ -1,6 +1,10 @@
-import { cross, Point2D, transformFromScreenCoordinates } from "../utils/geometry-2d.ts"
+import {
+  type Point2D,
+  cross,
+  transformFromScreenCoordinates,
+} from "../utils/geometry-2d.ts";
 
-export interface ElementResizerConfig {
+export interface ResizerConfig {
   resizable: boolean;
   maintainAspectRatio: boolean;
   aspectRatio: number;
@@ -12,10 +16,9 @@ export interface ElementResizerConfig {
   maxWidth: number;
   maxHeight: number;
   zIndex: string;
-  element?: HTMLElement;
-};
+}
 
-type ConfigKey = keyof ElementResizerConfig;
+type ConfigKey = keyof ResizerConfig;
 
 export interface ResizeEventDetail {
   /**
@@ -40,11 +43,13 @@ export interface ResizeEventDetail {
   height: number;
   initialWidth: number;
   initialHeight: number;
-  resizer: ElementResizer;
+  resizer: Resizer;
 }
 
+export type ResizeEventType = "resizestart" | "resizeend" | "resizecancel" | "resize" | "resized";
+
 export class ResizeEvent extends Event implements ResizeEventDetail {
-  type: "resizestart" | "resizestop" | "resizecancel" | "resizemove" | "resize";
+  type: ResizeEventType;
   resizeDirection: number;
   maintainAspectRatio: boolean;
   aspectRatio: number;
@@ -54,10 +59,10 @@ export class ResizeEvent extends Event implements ResizeEventDetail {
   height: number;
   initialWidth: number;
   initialHeight: number;
-  resizer: ElementResizer;
-  constructor(type: "resizestart" | "resizestop" | "resizecancel" | "resizemove" | "resize",
-    resizer: ElementResizer,
-    options: Partial<ResizeEventDetail> = {},
+  resizer: Resizer;
+  constructor(
+    type: ResizeEventType,
+    options: Partial<ResizeEventDetail> & { resizer: Resizer },
   ) {
     super(type); // This event does not bubble.
     this.type = type;
@@ -70,20 +75,20 @@ export class ResizeEvent extends Event implements ResizeEventDetail {
     this.height = options.height ?? -1;
     this.initialWidth = options.initialWidth ?? -1;
     this.initialHeight = options.initialHeight ?? -1;
-    this.resizer = resizer;
+    this.resizer = options.resizer;
   }
 
   get isCornerResizing(): boolean {
     return [1, 3, 5, 7].includes(this.resizeDirection);
   }
-};
+}
 
 export type AspectRatioFitStrategy =
-  "fix-width" |
-  "fix-height" |
-  "fix-diagonal" |
-  "fix-area" |
-  "fix-circumference";
+  | "fix-width"
+  | "fix-height"
+  | "fix-diagonal"
+  | "fix-area"
+  | "fix-circumference";
 
 const POINTER_EVENT_TYPES = [
   "pointermove",
@@ -94,16 +99,16 @@ const POINTER_EVENT_TYPES = [
   "pointerover",
   "pointerout",
   "pointercancel",
-]
+];
 
-export class ElementResizer implements ElementResizerConfig {
+export class Resizer implements ResizerConfig {
   private _resizable: boolean = true;
   private _maintainAspectRatio: boolean = false;
   resizeBorderWidth: number | string = "1px";
   minWidth: number = 1;
   minHeight: number = 1;
-  maxWidth: number = Infinity;
-  maxHeight: number = Infinity;
+  maxWidth: number = Number.POSITIVE_INFINITY;
+  maxHeight: number = Number.POSITIVE_INFINITY;
   zIndex: string = "2147483647";
   private _aspectRatio: number = 1;
   aspectRatioOffsetWidth: number = 0;
@@ -114,14 +119,14 @@ export class ElementResizer implements ElementResizerConfig {
   }
   set resizable(v: boolean) {
     this._resizable = v;
-    this.updateResizeCursor();
+    this.updateResizeControls();
   }
   get maintainAspectRatio(): boolean {
     return this._maintainAspectRatio;
   }
   set maintainAspectRatio(v: boolean) {
     this._maintainAspectRatio = v;
-    this.updateResizeCursor();
+    this.updateResizeControls();
     if (v) {
       this.fitAspectRatio();
     }
@@ -139,13 +144,20 @@ export class ElementResizer implements ElementResizerConfig {
     }
   }
 
-  constructor(config: Partial<ElementResizerConfig> = {}) {
+  get element(): HTMLElement | undefined {
+    return this._element;
+  }
+  set element(v: HTMLElement) {
+    this.attach(v);
+  }
+
+  constructor(config: Partial<ResizerConfig> = {}) {
     for (const key in config) {
       (this as any)[key] = config[key as ConfigKey];
     }
   }
 
-  getConfig(): ElementResizerConfig {
+  getConfig(): ResizerConfig {
     return {
       resizable: this.resizable,
       maintainAspectRatio: this.maintainAspectRatio,
@@ -158,11 +170,10 @@ export class ElementResizer implements ElementResizerConfig {
       maxWidth: this.maxWidth,
       maxHeight: this.maxHeight,
       zIndex: this.zIndex,
-      element: this.element,
-    }
+    };
   }
 
-  private _uninstall: (() => void) | undefined = undefined;
+  private _detach: (() => void) | undefined = undefined;
   private _element: HTMLElement | undefined;
 
   /*
@@ -203,10 +214,10 @@ export class ElementResizer implements ElementResizerConfig {
    */
   private resizeControls: HTMLElement[] = [];
 
-  install(element: HTMLElement): () => void {
-    this.uninstall();
-    if (element == null) {
-      return () => { };
+  attach(element: HTMLElement): () => void {
+    this.detach();
+    if (!element.parentElement) {
+      throw "Resizer cannot attach to an element without parentElement";
     }
     if (getComputedStyle(element).position === "static") {
       element.style.position = "relative";
@@ -214,11 +225,15 @@ export class ElementResizer implements ElementResizerConfig {
     element.style.boxSizing = "border-box";
 
     // Add elements to capture clicking + dragging on the border.
-    const resizeBorderWidth = typeof this.resizeBorderWidth === "number" ?
-      `${this.resizeBorderWidth}px` : this.resizeBorderWidth;
+    const resizeBorderWidth =
+      typeof this.resizeBorderWidth === "number"
+        ? `${this.resizeBorderWidth}px`
+        : this.resizeBorderWidth;
     const resizeControls: HTMLElement[] = new Array(12);
     for (const i of [0, 2, 3, 5, 6, 8, 9, 11, 1, 4, 7, 10]) {
       const resizeControl = document.createElement("div");
+      resizeControl.style.display = "none";
+      resizeControl.style.pointerEvents = "none";
       resizeControl.style.border = "0";
       resizeControl.style.margin = "0";
       resizeControl.style.padding = "0";
@@ -231,7 +246,6 @@ export class ElementResizer implements ElementResizerConfig {
       resizeControl.style.width = "50%";
       resizeControl.style.height = "50%";
       resizeControl.style.zIndex = this.zIndex.toString();
-      resizeControl.style.pointerEvents = "auto";
 
       // Set up anchors.
       if (i <= 2) {
@@ -265,66 +279,93 @@ export class ElementResizer implements ElementResizerConfig {
     const listener = (event: PointerEvent) => this.onPointerEvent(event);
     for (const resizeControl of resizeControls) {
       for (const type of POINTER_EVENT_TYPES) {
-        resizeControl.addEventListener(type, listener as any)
+        resizeControl.addEventListener(type, listener as any);
       }
     }
 
     const resizeObserver = new ResizeObserver(() => {
-      element.dispatchEvent(new ResizeEvent("resize", this, {
-        maintainAspectRatio: false,
-        width: element.offsetWidth,
-        height: element.offsetHeight,
-      }))
-    })
+      element.dispatchEvent(
+        new ResizeEvent("resized", {
+          resizer: this,
+          maintainAspectRatio: false,
+          width: element.offsetWidth,
+          height: element.offsetHeight,
+        }),
+      );
+    });
     resizeObserver.observe(element, { box: "border-box" });
 
     this._element = element;
     this.resizeControls = resizeControls;
-    this.updateResizeCursor();
 
-    this._uninstall = () => {
+    this._detach = () => {
       resizeObserver.disconnect();
 
       for (const resizeControl of resizeControls) {
-        for (const type of POINTER_EVENT_TYPES) {
-          resizeControl.removeEventListener(type, listener as any);
-        }
+        try {
+          element.removeChild(resizeControl);
+        } catch (_e) { }
       }
+    };
 
-      if (element) {
-        for (const resizeControl of resizeControls) {
-          try {
-            element.removeChild(resizeControl);
-          } catch (_e) {
-          }
-        }
-      }
-    }
-    return () => this.uninstall();
+    this.updateResizeControls();
+    return () => { this.detach() };
   }
 
-  uninstall() {
-    if (this._uninstall) {
-      this._uninstall();
-      this._uninstall = undefined;
+  detach() {
+    if (this._detach) {
+      this._detach();
+      this._detach = undefined;
     }
     this._element = undefined;
     this.resizeControls = [];
   }
 
-  get element(): HTMLElement | undefined {
-    return this._element;
-  }
-  set element(v: HTMLElement) {
-    this.install(v);
+  updateResizeControls() {
+    if (this.resizable && this.resizeControls.length === 12) {
+      for (const resizeControl of this.resizeControls) {
+        resizeControl.style.removeProperty("cursor");
+        resizeControl.style.pointerEvents = "auto";
+        resizeControl.style.display = "block";
+      }
+      this.resizeControls[0].style.cursor = this.maintainAspectRatio
+        ? "nesw-resize"
+        : "ns-resize";
+      this.resizeControls[1].style.cursor = "nesw-resize";
+      this.resizeControls[2].style.cursor = this.maintainAspectRatio
+        ? "nesw-resize"
+        : "ew-resize";
+      this.resizeControls[3].style.cursor = this.maintainAspectRatio
+        ? "nwse-resize"
+        : "ew-resize";
+      this.resizeControls[4].style.cursor = "nwse-resize";
+      this.resizeControls[5].style.cursor = this.maintainAspectRatio
+        ? "nwse-resize"
+        : "ns-resize";
+      for (let i = 0; i < 6; ++i) {
+        this.resizeControls[i + 6].style.cursor =
+          this.resizeControls[i].style.cursor;
+      }
+    } else {
+      for (const resizeControl of this.resizeControls) {
+        resizeControl.style.removeProperty("cursor");
+        resizeControl.style.pointerEvents = "none";
+        resizeControl.style.display = "none";
+      }
+    }
   }
 
-  resize(params: { width?: string | number; height?: string | number }, direction: number = -1) {
+  resize(
+    params: { width?: string | number; height?: string | number },
+    direction: number = -1,
+  ) {
     if (!this._element) {
       return false;
     }
-    const newWidth = typeof params.width === "number" ? `${params.width}px` : params.width;
-    const newHeight = typeof params.height === "number" ? `${params.height}px` : params.height;
+    const newWidth =
+      typeof params.width === "number" ? `${params.width}px` : params.width;
+    const newHeight =
+      typeof params.height === "number" ? `${params.height}px` : params.height;
     if (direction === -1) {
       if (newWidth) {
         this._element.style.width = newWidth;
@@ -335,7 +376,7 @@ export class ElementResizer implements ElementResizerConfig {
       return true;
     }
 
-    const computedStyle = getComputedStyle(this._element)
+    const computedStyle = getComputedStyle(this._element);
     const top = computedStyle.top;
     const right = computedStyle.right;
     const bottom = computedStyle.bottom;
@@ -365,15 +406,19 @@ export class ElementResizer implements ElementResizerConfig {
     return true;
   }
 
-  findSizeForAspectRatio(strategy: AspectRatioFitStrategy): {
-    width: number; height: number;
-  } | undefined {
+  findSizeForAspectRatio(strategy: AspectRatioFitStrategy):
+    | {
+      width: number;
+      height: number;
+    }
+    | undefined {
     if (!this._element || !(this.aspectRatio > 0)) {
       return undefined;
     }
     const aspectRatio = this.aspectRatio;
     const baseWidth = this._element.offsetWidth - this.aspectRatioOffsetWidth;
-    const baseHeight = this._element.offsetHeight - this.aspectRatioOffsetHeight;
+    const baseHeight =
+      this._element.offsetHeight - this.aspectRatioOffsetHeight;
     let newBaseHeight = baseHeight;
     switch (strategy) {
       case "fix-width": {
@@ -384,11 +429,13 @@ export class ElementResizer implements ElementResizerConfig {
         break;
       }
       case "fix-diagonal": {
-        newBaseHeight = Math.sqrt((baseWidth ** 2 + baseHeight ** 2) / (aspectRatio ** 2 + 1));
+        newBaseHeight = Math.sqrt(
+          (baseWidth ** 2 + baseHeight ** 2) / (aspectRatio ** 2 + 1),
+        );
         break;
       }
       case "fix-area": {
-        newBaseHeight = Math.sqrt(baseWidth * baseHeight / aspectRatio);
+        newBaseHeight = Math.sqrt((baseWidth * baseHeight) / aspectRatio);
         break;
       }
       case "fix-circumference": {
@@ -396,12 +443,16 @@ export class ElementResizer implements ElementResizerConfig {
         break;
       }
     }
-    newBaseHeight = clamp(newBaseHeight,
+    newBaseHeight = clamp(
+      newBaseHeight,
       Math.max(this.minHeight - this.aspectRatioOffsetHeight, 1),
-      this.maxHeight - this.aspectRatioOffsetHeight);
-    const newBaseWidth = clamp(newBaseHeight * aspectRatio,
+      this.maxHeight - this.aspectRatioOffsetHeight,
+    );
+    const newBaseWidth = clamp(
+      newBaseHeight * aspectRatio,
       Math.max(this.minWidth - this.aspectRatioOffsetWidth, 1),
-      this.maxWidth - this.aspectRatioOffsetWidth);
+      this.maxWidth - this.aspectRatioOffsetWidth,
+    );
 
     return {
       width: newBaseWidth + this.aspectRatioOffsetWidth,
@@ -411,7 +462,8 @@ export class ElementResizer implements ElementResizerConfig {
 
   fitAspectRatio(
     direction: number = -1,
-    strategy: AspectRatioFitStrategy = "fix-diagonal"): boolean {
+    strategy: AspectRatioFitStrategy = "fix-diagonal",
+  ): boolean {
     const size = this.findSizeForAspectRatio(strategy);
     if (!size) {
       return false;
@@ -432,7 +484,12 @@ export class ElementResizer implements ElementResizerConfig {
   setAspectRatio(
     aspectRatio: number,
     direction: number = -1,
-    strategy: "fix-width" | "fix-height" | "fix-diagonal" | "fix-area" | "fix-circumference" = "fix-diagonal",
+    strategy:
+      | "fix-width"
+      | "fix-height"
+      | "fix-diagonal"
+      | "fix-area"
+      | "fix-circumference" = "fix-diagonal",
   ): boolean {
     this._aspectRatio = aspectRatio;
     return this.fitAspectRatio(direction, strategy);
@@ -450,8 +507,12 @@ export class ElementResizer implements ElementResizerConfig {
     if (!this._element || !this.resizable || !event.isPrimary) {
       return;
     }
-    const pointerPosition = transformFromScreenCoordinates(this._element, event.screenX, event.screenY)
-    const computedStyle = getComputedStyle(this._element)
+    const pointerPosition = transformFromScreenCoordinates(
+      this._element,
+      event.screenX,
+      event.screenY,
+    );
+    const computedStyle = getComputedStyle(this._element);
     const top = computedStyle.top;
     const right = computedStyle.right;
     const bottom = computedStyle.bottom;
@@ -460,13 +521,23 @@ export class ElementResizer implements ElementResizerConfig {
     const height = this._element.offsetHeight;
     switch (event.type) {
       case "pointerdown": {
-        const index = this.resizeControls.findIndex(resizeControl => resizeControl === event.target);
+        const index = this.resizeControls.findIndex(
+          (resizeControl) => resizeControl === event.target,
+        );
         if (index in this.resizeControls) {
           this.resizingIndex = index;
           this.resizingElement = this.resizeControls[index];
           this.resizingInitialPoint = pointerPosition;
-          this.resizingInitialWidth = clamp(width, this.minWidth, this.maxWidth)
-          this.resizingInitialHeight = clamp(height, this.minHeight, this.maxHeight)
+          this.resizingInitialWidth = clamp(
+            width,
+            this.minWidth,
+            this.maxWidth,
+          );
+          this.resizingInitialHeight = clamp(
+            height,
+            this.minHeight,
+            this.maxHeight,
+          );
           this.resizingWidthDirection = 0;
           this.resizingHeightDirection = 0;
 
@@ -493,40 +564,46 @@ export class ElementResizer implements ElementResizerConfig {
             this._element.style.height = `${height}px`;
           } else {
             if (index <= 1 || index >= 10) {
-              this._element.style.bottom = bottom
-              this._element.style.top = ""
-              this._element.style.height = `${height}px`
+              this._element.style.bottom = bottom;
+              this._element.style.top = "";
+              this._element.style.height = `${height}px`;
               this.resizingHeightDirection = -1;
             } else if (index >= 4 && index <= 8) {
-              this._element.style.top = top
-              this._element.style.bottom = ""
-              this._element.style.height = `${height}px`
+              this._element.style.top = top;
+              this._element.style.bottom = "";
+              this._element.style.height = `${height}px`;
               this.resizingHeightDirection = 1;
             }
             if (index >= 1 && index <= 4) {
-              this._element.style.left = left
-              this._element.style.right = ""
-              this._element.style.width = `${width}px`
+              this._element.style.left = left;
+              this._element.style.right = "";
+              this._element.style.width = `${width}px`;
               this.resizingWidthDirection = 1;
             } else if (index >= 7 && index <= 10) {
-              this._element.style.right = right
-              this._element.style.left = ""
-              this._element.style.width = `${width}px`
+              this._element.style.right = right;
+              this._element.style.left = "";
+              this._element.style.width = `${width}px`;
               this.resizingWidthDirection = -1;
             }
           }
 
-          this.resizingElement.setPointerCapture(event.pointerId)
+          this.resizingElement.setPointerCapture(event.pointerId);
           event.preventDefault();
           event.stopPropagation();
-          this._element.dispatchEvent(new ResizeEvent("resizestart", this, {
-            maintainAspectRatio: this.maintainAspectRatio,
-            resizeDirection: getResizeDirection(this.resizingWidthDirection, this.resizingHeightDirection),
-            width,
-            height,
-            initialWidth: width,
-            initialHeight: height,
-          }));
+          this._element.dispatchEvent(
+            new ResizeEvent("resizestart", {
+              resizer: this,
+              maintainAspectRatio: this.maintainAspectRatio,
+              resizeDirection: getResizeDirection(
+                this.resizingWidthDirection,
+                this.resizingHeightDirection,
+              ),
+              width,
+              height,
+              initialWidth: width,
+              initialHeight: height,
+            }),
+          );
         }
         break;
       }
@@ -539,93 +616,122 @@ export class ElementResizer implements ElementResizerConfig {
           if (this.resizingHeightDirection !== 0) {
             this._element.style.height = `${this.resizingInitialHeight}px`;
           }
-          this.resizingElement?.releasePointerCapture(event.pointerId)
+          this.resizingElement?.releasePointerCapture(event.pointerId);
           event.preventDefault();
           event.stopPropagation();
-          this._element.dispatchEvent(new ResizeEvent("resizecancel", this, {
-            maintainAspectRatio: this.maintainAspectRatio,
-            resizeDirection: getResizeDirection(this.resizingWidthDirection, this.resizingHeightDirection),
-            width: this.resizingInitialWidth,
-            height: this.resizingInitialHeight,
-            initialWidth: this.resizingInitialWidth,
-            initialHeight: this.resizingInitialHeight,
-          }));
+          this._element.dispatchEvent(
+            new ResizeEvent("resizecancel", {
+              resizer: this,
+              maintainAspectRatio: this.maintainAspectRatio,
+              resizeDirection: getResizeDirection(
+                this.resizingWidthDirection,
+                this.resizingHeightDirection,
+              ),
+              width: this.resizingInitialWidth,
+              height: this.resizingInitialHeight,
+              initialWidth: this.resizingInitialWidth,
+              initialHeight: this.resizingInitialHeight,
+            }),
+          );
         }
-        this.resizingElement = undefined
+        this.resizingElement = undefined;
         this.resizingIndex = -1;
         break;
       }
       case "pointerup": {
         if (this.resizingIndex >= 0) {
-          this.resizingElement?.releasePointerCapture(event.pointerId)
+          this.resizingElement?.releasePointerCapture(event.pointerId);
           event.preventDefault();
           event.stopPropagation();
-          this._element.dispatchEvent(new ResizeEvent("resizestop", this, {
-            maintainAspectRatio: this.maintainAspectRatio,
-            resizeDirection: getResizeDirection(this.resizingWidthDirection, this.resizingHeightDirection),
-            width,
-            height,
-            initialWidth: this.resizingInitialWidth,
-            initialHeight: this.resizingInitialHeight,
-          }));
+          this._element.dispatchEvent(
+            new ResizeEvent("resizeend", {
+              resizer: this,
+              maintainAspectRatio: this.maintainAspectRatio,
+              resizeDirection: getResizeDirection(
+                this.resizingWidthDirection,
+                this.resizingHeightDirection,
+              ),
+              width,
+              height,
+              initialWidth: this.resizingInitialWidth,
+              initialHeight: this.resizingInitialHeight,
+            }),
+          );
         }
-        this.resizingElement = undefined
+        this.resizingElement = undefined;
         this.resizingIndex = -1;
         break;
       }
       case "pointermove": {
         const index = this.resizingIndex;
         if (index in this.resizeControls) {
-          let displacement = {
+          const displacement = {
             x: pointerPosition.x - this.resizingInitialPoint.x,
             y: pointerPosition.y - this.resizingInitialPoint.y,
           };
 
-          let targetBaseWidth;
-          let targetBaseHeight;
-          let targetWidth;
-          let targetHeight;
+          let targetBaseWidth: number;
+          let targetBaseHeight: number;
+          let targetWidth: number;
+          let targetHeight: number;
 
           if (this.maintainAspectRatio) {
-            const baseWidth = this.resizingInitialWidth - this.aspectRatioOffsetWidth;
-            const baseHeight = this.resizingInitialHeight - this.aspectRatioOffsetHeight;
+            let baseWidth =
+              this.resizingInitialWidth - this.aspectRatioOffsetWidth;
+            let baseHeight =
+              this.resizingInitialHeight - this.aspectRatioOffsetHeight;
             const cornerDirection = {
               x: baseWidth * this.resizingWidthDirection,
               y: baseHeight * this.resizingHeightDirection,
-            }
+            };
             if (baseWidth <= 0 || baseHeight <= 0) {
-              event.preventDefault();
-              event.stopPropagation();
-              return;
+              if (this.aspectRatio < 1) {
+                baseWidth = 1;
+                baseHeight = 1 / this.aspectRatio;
+              } else {
+                baseHeight = 1;
+                baseWidth = this.aspectRatio;
+              }
             }
-            let useX
+            let useX: boolean;
             if (index === 1 || index === 7) {
-              useX = cross(displacement, cornerDirection) < 0
+              useX = cross(displacement, cornerDirection) < 0;
             } else if (index === 4 || index === 10) {
-              useX = cross(displacement, cornerDirection) > 0
-            } else if (index === 2 || index === 3 || index === 8 || index === 9) {
+              useX = cross(displacement, cornerDirection) > 0;
+            } else if (
+              index === 2 ||
+              index === 3 ||
+              index === 8 ||
+              index === 9
+            ) {
               useX = true;
             } else {
               useX = false;
             }
             if (useX) {
-              targetBaseWidth = clamp(baseWidth + this.resizingWidthDirection * displacement.x,
+              targetBaseWidth = clamp(
+                baseWidth + this.resizingWidthDirection * displacement.x,
                 Math.max(this.minWidth - this.aspectRatioOffsetWidth, 1),
-                this.maxWidth - this.aspectRatioOffsetWidth
+                this.maxWidth - this.aspectRatioOffsetWidth,
               );
               targetBaseHeight = targetBaseWidth / this.aspectRatio;
             } else {
-              targetBaseHeight = clamp(baseHeight + this.resizingHeightDirection * displacement.y,
+              targetBaseHeight = clamp(
+                baseHeight + this.resizingHeightDirection * displacement.y,
                 Math.max(this.minHeight - this.aspectRatioOffsetHeight, 1),
-                this.maxHeight - this.aspectRatioOffsetHeight
+                this.maxHeight - this.aspectRatioOffsetHeight,
               );
               targetBaseWidth = targetBaseHeight * this.aspectRatio;
             }
-            targetWidth = targetBaseWidth + this.aspectRatioOffsetWidth
-            targetHeight = targetBaseHeight + this.aspectRatioOffsetHeight
+            targetWidth = targetBaseWidth + this.aspectRatioOffsetWidth;
+            targetHeight = targetBaseHeight + this.aspectRatioOffsetHeight;
           } else {
-            targetWidth = this.resizingInitialWidth + displacement.x * this.resizingWidthDirection;
-            targetHeight = this.resizingInitialHeight + displacement.y * this.resizingHeightDirection;
+            targetWidth =
+              this.resizingInitialWidth +
+              displacement.x * this.resizingWidthDirection;
+            targetHeight =
+              this.resizingInitialHeight +
+              displacement.y * this.resizingHeightDirection;
           }
           if (this.resizingWidthDirection !== 0) {
             targetWidth = clamp(targetWidth, this.minWidth, this.maxWidth);
@@ -638,39 +744,26 @@ export class ElementResizer implements ElementResizerConfig {
 
           event.preventDefault();
           event.stopPropagation();
-          this._element.dispatchEvent(new ResizeEvent("resizemove", this, {
-            maintainAspectRatio: this.maintainAspectRatio,
-            resizeDirection: getResizeDirection(this.resizingWidthDirection, this.resizingHeightDirection),
-            width,
-            height,
-            initialWidth: this.resizingInitialWidth,
-            initialHeight: this.resizingInitialHeight,
-          }));
+          this._element.dispatchEvent(
+            new ResizeEvent("resize", {
+              resizer: this,
+              maintainAspectRatio: this.maintainAspectRatio,
+              resizeDirection: getResizeDirection(
+                this.resizingWidthDirection,
+                this.resizingHeightDirection,
+              ),
+              width,
+              height,
+              initialWidth: this.resizingInitialWidth,
+              initialHeight: this.resizingInitialHeight,
+            }),
+          );
         }
         break;
       }
     }
   }
-
-  updateResizeCursor() {
-    if (this.resizable && this.resizeControls.length === 12) {
-      this.resizeControls[0].style.cursor = this.maintainAspectRatio ? "nesw-resize" : "ns-resize";
-      this.resizeControls[1].style.cursor = "nesw-resize";
-      this.resizeControls[2].style.cursor = this.maintainAspectRatio ? "nesw-resize" : "ew-resize";
-      this.resizeControls[3].style.cursor = this.maintainAspectRatio ? "nwse-resize" : "ew-resize";
-      this.resizeControls[4].style.cursor = "nwse-resize";
-      this.resizeControls[5].style.cursor = this.maintainAspectRatio ? "nwse-resize" : "ns-resize";
-      for (let i = 0; i < 6; ++i) {
-        this.resizeControls[i + 6].style.cursor = this.resizeControls[i].style.cursor;
-      }
-    } else {
-      for (const resizeControl of this.resizeControls) {
-        resizeControl.style.removeProperty("cursor");
-      }
-    }
-  }
-
-};
+}
 
 function getResizeDirection(hDir: number, vDir: number): number {
   if (vDir < 0) {
@@ -690,4 +783,3 @@ function getResizeDirection(hDir: number, vDir: number): number {
 function clamp(value: number, lowerBound: number, upperBound: number): number {
   return Math.max(Math.min(value, upperBound), lowerBound);
 }
-
