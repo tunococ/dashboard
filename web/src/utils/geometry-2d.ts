@@ -4,14 +4,14 @@ export function sum(u: Point2D, v: Point2D): Point2D {
   return {
     x: u.x + v.x,
     y: u.y + v.y,
-  }
+  };
 }
 
 export function diff(u: Point2D, v: Point2D): Point2D {
   return {
     x: u.x - v.x,
     y: u.y - v.y,
-  }
+  };
 }
 
 export function scale(scale: number, u: Point2D): Point2D {
@@ -47,7 +47,7 @@ export function dist(u: Point2D, v: Point2D): number {
  * `v` must be non-zero.
  */
 export function project(u: Point2D, v: Point2D): Point2D {
-  if ((u.x === 0) && (u.y === 0)) {
+  if (u.x === 0 && u.y === 0) {
     return { x: 0, y: 0 };
   }
   return scale(dot(u, v) / normSquared(v), v);
@@ -59,7 +59,7 @@ export function project(u: Point2D, v: Point2D): Point2D {
  * This can be negative if `u` points into the opposite direction of `v`.
  */
 export function projectionLength(u: Point2D, v: Point2D): number {
-  if ((u.x === 0) && (u.y === 0)) {
+  if (u.x === 0 && u.y === 0) {
     return 0;
   }
   return dot(u, v) / norm(v);
@@ -94,4 +94,3 @@ export function transformFromScreenCoordinates(
   const point = new DOMPointReadOnly(x, y).matrixTransform(m.inverse());
   return { x: point.x, y: point.y };
 }
-

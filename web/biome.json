@@ -32,6 +32,7 @@
         "noInferrableTypes": "off",
         "noNonNullAssertion": "off",
         "noParameterAssign": "off",
+        "noUnusedTemplateLiteral": "off",
         "useNumberNamespace": "warn"
       }
     }

@@ -6,7 +6,8 @@ import guangdang from "../public/Guangdang.png";
 import cabbaggy from "../public/cabbaggy.png";
 import animatedSeal from "../public/seal.png";
 import { ZoomableView } from "./components/zoomable-view";
-import { ElementResizer, ResizeEvent } from "./event-handlers/element-resizer";
+import { ResizeEvent, Resizer } from "./modifiers/resizer";
+import { MoveEvent, Mover } from "./modifiers/mover";
 
 ZoomableView.register();
 
@@ -45,12 +46,20 @@ app.innerHTML = `
           <img src="${cabbaggy}" width=70 />
           <img src="${guangdang}" width=70 />
         </div>
-        <div id="resizable" style="position: absolute; pointer-events: auto; bottom: 1em; left: 1em; width: 5em; height: 5em; background-color: #f00;">
+        <div id="resizable" style="position: absolute; pointer-events: auto; bottom: 1em; left: 1em; width: 12em; height: 6em; background-color: #f00;">
           <div id="resizable-interior" style="position: absolute; top: 5px; right: 5px; bottom: 5px; left: 5px; background-color: #ddf; overflow: scroll;">
             <div style="position: absolute; left: 5px; right: 5px; top: 5px; bottom: 5px;">
+              <input type="checkbox" id="toggle-resize" name="toggle-resize"
+                />
+              <label for="toggle-resize">Resizable</label>
+              <br>
               <input type="checkbox" id="toggle-aspect-ratio" name="toggle-aspect-ratio"
                 />
               <label for="toggle-aspect-ratio">Maintain aspect ratio</label>
+              <br>
+              <input type="checkbox" id="toggle-move" name="toggle-move"
+                />
+              <label for="toggle-move">Movable</label>
             </div>
           </div>
         </div>
@@ -164,12 +173,14 @@ const resizable = document.getElementById("resizable");
 if (!resizable) {
   throw "resizable is null";
 }
-const resizer = new ElementResizer({
+const resizer = new Resizer({
   resizeBorderWidth: 5,
   aspectRatioOffsetHeight: 10,
   aspectRatioOffsetWidth: 10,
+  minWidth: 1,
+  minHeight: 1,
 });
-resizer.install(resizable);
+resizer.attach(resizable);
 const resizeHandler = (e: Event) => {
   if (!(e instanceof ResizeEvent)) {
     throw "Wrong event type -- expected ResizeEvent";
@@ -181,13 +192,33 @@ const resizeHandler = (e: Event) => {
 resizable.addEventListener("resizestart", resizeHandler);
 resizable.addEventListener("resizeend", resizeHandler);
 resizable.addEventListener("resizecancel", resizeHandler);
-resizable.addEventListener("resizemove", resizeHandler);
 resizable.addEventListener("resize", resizeHandler);
+resizable.addEventListener("resized", resizeHandler);
 
-const toggleAspectRatioButton = document.getElementById("toggle-aspect-ratio") as HTMLInputElement
-if (!toggleAspectRatioButton) {
-  throw "maintainAspectRatioButton is null";
+const toggleResizeButton = document.getElementById(
+  "toggle-resize",
+) as HTMLInputElement;
+if (!toggleResizeButton) {
+  throw "toggleResizeButton is null";
 }
+toggleResizeButton.checked = resizer.resizable;
+toggleResizeButton.addEventListener("change", (e: Event) => {
+  if (e.target === toggleResizeButton) {
+    if (toggleResizeButton.checked) {
+      resizer.resizable = true;
+    } else {
+      resizer.resizable = false;
+    }
+  }
+});
+
+const toggleAspectRatioButton = document.getElementById(
+  "toggle-aspect-ratio",
+) as HTMLInputElement;
+if (!toggleAspectRatioButton) {
+  throw "toggleAspectRatioButton is null";
+}
+toggleAspectRatioButton.checked = resizer.maintainAspectRatio;
 toggleAspectRatioButton.addEventListener("change", (e: Event) => {
   if (e.target === toggleAspectRatioButton) {
     if (toggleAspectRatioButton.checked) {
@@ -198,7 +229,41 @@ toggleAspectRatioButton.addEventListener("change", (e: Event) => {
     } else {
       resizer.maintainAspectRatio = false;
     }
-    e.stopPropagation();
+  }
+});
+
+const mover = new Mover({
+  marginLeft: 0,
+  marginRight: 0,
+  marginTop: 0,
+  marginBottom: 0,
+});
+mover.attach(resizable);
+const toggleMoveButton = document.getElementById("toggle-move") as HTMLInputElement;
+if (!toggleMoveButton) {
+  throw "toggleMoveButtonis null";
+}
+toggleMoveButton.checked = mover.movable;
+toggleMoveButton.addEventListener("change", (e: Event) => {
+  if (e.target === toggleMoveButton) {
+    mover.movable = toggleMoveButton.checked;
   }
 })
+const moveHandler = (e: Event) => {
+  if (!(e instanceof MoveEvent)) {
+    throw "Wrong event type -- expected MoveEvent";
+  }
+  switch (e.type) {
+    case "moveend":
+    case "movecancel": {
+      toggleMoveButton.checked = false;
+      mover.movable = false;
+      break;
+    }
+  }
+}
+resizable.addEventListener("movestart", moveHandler);
+resizable.addEventListener("moveend", moveHandler);
+resizable.addEventListener("movecancel", moveHandler);
+resizable.addEventListener("move", moveHandler);
 
