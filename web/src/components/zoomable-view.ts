@@ -1,3 +1,6 @@
+import { centroid, dist, transformFromScreenCoordinates } from "../utils/geometry-2d";
+
+
 const defaultAttributes: Record<string, any> = {
   "zoom-speed": 0.002,
   "min-zoom": 0.1,
@@ -33,13 +36,40 @@ export type Point2D = { x: number; y: number };
  * ```
  */
 export class ZoomableView extends HTMLElement {
+
   /**
-   * Register {@link ZoomableView} as an HTML element with tag `tagName`.
-   *
-   * @param tagName Desired tag name
+   * The tag name that has been registered for this component.
    */
-  static register(tagName: string = "zoomable-view") {
-    customElements.define(tagName, ZoomableView);
+  static tagName: string = "";
+
+  /**
+   * @brief Registers {@link ZoomableView} as a custom web component with tag
+   * `tagName`.
+   *
+   * The return value of this function is the tag name that was registered with
+   * this component.
+   *
+   * Since a component can be registered only once, only the first call will
+   * actually register the component. Subsequent calls will simply return the
+   * tag name that was first registered.
+   *
+   * Other components that depend on this module can call this function to
+   * retrieve the correct tag name instead of assuming that the tag name they
+   * supply to `register` is the correct one.
+   *
+   * @param tagName Desired tag name.
+   * @returns The tag name that was registered for this element.
+   *   This may be different from the input `tagName` if `register` had been
+   *   called earlier, in which case, this return value should be used.
+   */
+  static register(tagName: string = "zoomable-view"): string {
+    if (!ZoomableView.tagName) {
+      customElements.define(tagName, ZoomableView);
+      ZoomableView.tagName = tagName;
+      return tagName;
+    } else {
+      return ZoomableView.tagName;
+    }
   }
 
   static readonly observedAttributes = Object.keys(defaultAttributes);
@@ -482,7 +512,7 @@ export class ZoomableView extends HTMLElement {
   protected onWheelEvent(e: Event) {
     const event = e as WheelEvent;
     if (event.deltaY != null) {
-      setTimeout(() => {}, 0);
+      setTimeout(() => { }, 0);
       let deltaY = event.deltaY;
       switch (event.deltaMode) {
         // It is unclear if this will ever happen.
@@ -530,7 +560,7 @@ export class ZoomableView extends HTMLElement {
       }
       this.pointerLastCentroid = centroid(this.pointers);
       this.pointerLastRadius = average(
-        this.pointers.map((p) => distance(p, this.pointerLastCentroid)),
+        this.pointers.map((p) => dist(p, this.pointerLastCentroid)),
       );
       event.preventDefault();
     } else {
@@ -549,10 +579,11 @@ export class ZoomableView extends HTMLElement {
               newCentroid.y - this.pointerLastCentroid.y,
             );
             this.pointerLastCentroid = newCentroid;
+            this.container.style.cursor = "grabbing";
           }
           if (this.pointerZooming) {
             const newRadius = average(
-              this.pointers.map((p) => distance(p, newCentroid)),
+              this.pointers.map((p) => dist(p, newCentroid)),
             );
             const zoomMultiple = newRadius / this.pointerLastRadius;
             this.setZoom(this.currentZoom * zoomMultiple);
@@ -570,10 +601,11 @@ export class ZoomableView extends HTMLElement {
             this.pointerZooming = false;
           } else if (this.pointers.length === 0) {
             this.pointerScrolling = false;
+            this.container.style.cursor = "";
           }
           this.pointerLastCentroid = centroid(this.pointers);
           this.pointerLastRadius = average(
-            this.pointers.map((p) => distance(p, this.pointerLastCentroid)),
+            this.pointers.map((p) => dist(p, this.pointerLastCentroid)),
           );
           event.preventDefault();
           event.stopPropagation();
@@ -603,33 +635,3 @@ function average(nums: Iterable<number>): number {
   return i === 0 ? 0 : sum / i;
 }
 
-function centroid(points: Iterable<Point2D>): Point2D {
-  let i = 0;
-  let sumX = 0;
-  let sumY = 0;
-  for (const { x, y } of points) {
-    sumX += x;
-    sumY += y;
-    ++i;
-  }
-  return i === 0 ? { x: 0, y: 0 } : { x: sumX / i, y: sumY / i };
-}
-
-function distance(p: Point2D, q: Point2D): number {
-  return Math.sqrt((p.x - q.x) ** 2 + (p.y - q.y) ** 2);
-}
-
-function transformFromScreenCoordinates(
-  element: Element,
-  x: number,
-  y: number,
-): Point2D {
-  let e: Element | null = element;
-  let m: DOMMatrixReadOnly = new DOMMatrixReadOnly();
-  while (e) {
-    m = new DOMMatrixReadOnly(getComputedStyle(e).transform).multiply(m);
-    e = e.parentElement;
-  }
-  const point = new DOMPointReadOnly(x, y).matrixTransform(m.inverse());
-  return { x: point.x, y: point.y };
-}

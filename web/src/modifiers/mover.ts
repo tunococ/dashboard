@@ -1,4 +1,7 @@
-import { Point2D, transformFromScreenCoordinates } from "../utils/geometry-2d";
+import {
+  type Point2D,
+  transformFromScreenCoordinates,
+} from "../utils/geometry-2d";
 
 export interface MoveEventDetail {
   initialX: number;
@@ -16,10 +19,13 @@ export class MoveEvent extends Event implements MoveEventDetail {
   displacementX: number;
   displacementY: number;
   mover: Mover;
-  constructor(type: MoveEventType, options: Partial<MoveEventDetail> & { mover: Mover }) {
+  constructor(
+    type: MoveEventType,
+    options: Partial<MoveEventDetail> & { mover: Mover },
+  ) {
     super(type);
-    this.initialX = options.initialX ?? NaN;
-    this.initialY = options.initialY ?? NaN;
+    this.initialX = options.initialX ?? Number.NaN;
+    this.initialY = options.initialY ?? Number.NaN;
     this.displacementX = options.displacementX ?? 0;
     this.displacementY = options.displacementY ?? 0;
     this.mover = options.mover;
@@ -153,7 +159,7 @@ export class Mover {
         element.removeChild(endAnchor);
         element.parentElement?.removeChild(beginAnchor);
         element.parentElement?.removeChild(moveControl);
-      } catch (_e) { }
+      } catch (_e) {}
     };
 
     this.moveControl = moveControl;
@@ -162,7 +168,9 @@ export class Mover {
 
     this.updateMoveControl();
 
-    return () => { this.detach() };
+    return () => {
+      this.detach();
+    };
   }
 
   detach() {
@@ -192,12 +200,12 @@ export class Mover {
   }
 
   private moving: boolean = false;
-  private initialX: number = NaN;
-  private initialY: number = NaN;
-  private initialLeft: number = NaN;
-  private initialTop: number = NaN;
-  private initialRight: number = NaN;
-  private initialBottom: number = NaN;
+  private initialX: number = Number.NaN;
+  private initialY: number = Number.NaN;
+  private initialLeft: number = Number.NaN;
+  private initialTop: number = Number.NaN;
+  private initialRight: number = Number.NaN;
+  private initialBottom: number = Number.NaN;
   private lastDisplacement: Point2D = { x: 0, y: 0 };
 
   onPointerEvent(event: PointerEvent) {
@@ -219,8 +227,14 @@ export class Mover {
     );
     const left = this._element.offsetLeft - this.beginAnchor.offsetLeft;
     const top = this._element.offsetTop - this.beginAnchor.offsetTop;
-    const right = this.endAnchor.offsetLeft - this._element.offsetLeft - this._element.offsetWidth;
-    const bottom = this.endAnchor.offsetTop - this._element.offsetTop - this._element.offsetHeight;
+    const right =
+      this.endAnchor.offsetLeft -
+      this._element.offsetLeft -
+      this._element.offsetWidth;
+    const bottom =
+      this.endAnchor.offsetTop -
+      this._element.offsetTop -
+      this._element.offsetHeight;
     switch (event.type) {
       case "pointerdown": {
         // Remove right and bottom anchors.
@@ -244,34 +258,38 @@ export class Mover {
         this.initialRight = right;
         this.initialBottom = bottom;
         this.lastDisplacement = { x: 0, y: 0 };
-        this.moveControl.setPointerCapture(event.pointerId)
+        this.moveControl.setPointerCapture(event.pointerId);
         this.moving = true;
         this.updateMoveControl();
         event.preventDefault();
         event.stopPropagation();
-        this._element.dispatchEvent(new MoveEvent("movestart", {
-          mover: this,
-          initialX: this.initialX,
-          initialY: this.initialY,
-          displacementX: 0,
-          displacementY: 0,
-        }))
+        this._element.dispatchEvent(
+          new MoveEvent("movestart", {
+            mover: this,
+            initialX: this.initialX,
+            initialY: this.initialY,
+            displacementX: 0,
+            displacementY: 0,
+          }),
+        );
         break;
       }
       case "pointerup": {
         if (this.moving) {
-          this.moveControl.releasePointerCapture(event.pointerId)
+          this.moveControl.releasePointerCapture(event.pointerId);
           this.moving = false;
           this.updateMoveControl();
           event.preventDefault();
           event.stopPropagation();
-          this._element.dispatchEvent(new MoveEvent("moveend", {
-            mover: this,
-            initialX: this.initialX,
-            initialY: this.initialY,
-            displacementX: this.lastDisplacement.x,
-            displacementY: this.lastDisplacement.y,
-          }))
+          this._element.dispatchEvent(
+            new MoveEvent("moveend", {
+              mover: this,
+              initialX: this.initialX,
+              initialY: this.initialY,
+              displacementX: this.lastDisplacement.x,
+              displacementY: this.lastDisplacement.y,
+            }),
+          );
         }
         break;
       }
@@ -279,18 +297,20 @@ export class Mover {
         if (this.moving) {
           this._element.style.top = `${this.initialTop}px`;
           this._element.style.left = `${this.initialLeft}px`;
-          this.moveControl.releasePointerCapture(event.pointerId)
+          this.moveControl.releasePointerCapture(event.pointerId);
           this.moving = false;
           this.updateMoveControl();
           event.preventDefault();
           event.stopPropagation();
-          this._element.dispatchEvent(new MoveEvent("movecancel", {
-            mover: this,
-            initialX: this.initialX,
-            initialY: this.initialY,
-            displacementX: this.lastDisplacement.x,
-            displacementY: this.lastDisplacement.y,
-          }))
+          this._element.dispatchEvent(
+            new MoveEvent("movecancel", {
+              mover: this,
+              initialX: this.initialX,
+              initialY: this.initialY,
+              displacementX: this.lastDisplacement.x,
+              displacementY: this.lastDisplacement.y,
+            }),
+          );
         }
         break;
       }
@@ -300,13 +320,25 @@ export class Mover {
             x: pointerPosition.x - this.initialX,
             y: pointerPosition.y - this.initialY,
           };
-          let targetRight = Math.max(this.initialRight - displacement.x, this.marginRight);
-          let targetBottom = Math.max(this.initialBottom - displacement.y, this.marginBottom);
+          const targetRight = Math.max(
+            this.initialRight - displacement.x,
+            this.marginRight,
+          );
+          const targetBottom = Math.max(
+            this.initialBottom - displacement.y,
+            this.marginBottom,
+          );
           displacement.x = this.initialRight - targetRight;
           displacement.y = this.initialBottom - targetBottom;
 
-          let targetLeft = Math.max(this.initialLeft + displacement.x, this.marginLeft);
-          let targetTop = Math.max(this.initialTop + displacement.y, this.marginTop);
+          const targetLeft = Math.max(
+            this.initialLeft + displacement.x,
+            this.marginLeft,
+          );
+          const targetTop = Math.max(
+            this.initialTop + displacement.y,
+            this.marginTop,
+          );
           displacement.x = targetLeft - this.initialLeft;
           displacement.y = targetTop - this.initialTop;
 
@@ -317,17 +349,18 @@ export class Mover {
           event.preventDefault();
           event.stopPropagation();
 
-          this._element.dispatchEvent(new MoveEvent("move", {
-            mover: this,
-            initialX: this.initialX,
-            initialY: this.initialY,
-            displacementX: displacement.x,
-            displacementY: displacement.y,
-          }))
+          this._element.dispatchEvent(
+            new MoveEvent("move", {
+              mover: this,
+              initialX: this.initialX,
+              initialY: this.initialY,
+              displacementX: displacement.x,
+              displacementY: displacement.y,
+            }),
+          );
         }
         break;
       }
     }
   }
 }
-

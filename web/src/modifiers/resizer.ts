@@ -15,6 +15,10 @@ export interface ResizerConfig {
   minHeight: number;
   maxWidth: number;
   maxHeight: number;
+  expandLimitTop: number;
+  expandLimitRight: number;
+  expandLimitBottom: number;
+  expandLimitLeft: number;
   zIndex: string;
 }
 
@@ -46,7 +50,12 @@ export interface ResizeEventDetail {
   resizer: Resizer;
 }
 
-export type ResizeEventType = "resizestart" | "resizeend" | "resizecancel" | "resize" | "resized";
+export type ResizeEventType =
+  | "resizestart"
+  | "resizeend"
+  | "resizecancel"
+  | "resize"
+  | "resized";
 
 export class ResizeEvent extends Event implements ResizeEventDetail {
   type: ResizeEventType;
@@ -109,6 +118,10 @@ export class Resizer implements ResizerConfig {
   minHeight: number = 1;
   maxWidth: number = Number.POSITIVE_INFINITY;
   maxHeight: number = Number.POSITIVE_INFINITY;
+  expandLimitTop: number = Number.POSITIVE_INFINITY;
+  expandLimitRight: number = Number.POSITIVE_INFINITY;
+  expandLimitBottom: number = Number.POSITIVE_INFINITY;
+  expandLimitLeft: number = Number.POSITIVE_INFINITY;
   zIndex: string = "2147483647";
   private _aspectRatio: number = 1;
   aspectRatioOffsetWidth: number = 0;
@@ -169,6 +182,10 @@ export class Resizer implements ResizerConfig {
       minHeight: this.minHeight,
       maxWidth: this.maxWidth,
       maxHeight: this.maxHeight,
+      expandLimitTop: this.expandLimitTop,
+      expandLimitRight: this.expandLimitRight,
+      expandLimitBottom: this.expandLimitBottom,
+      expandLimitLeft: this.expandLimitLeft,
       zIndex: this.zIndex,
     };
   }
@@ -309,7 +326,9 @@ export class Resizer implements ResizerConfig {
     };
 
     this.updateResizeControls();
-    return () => { this.detach() };
+    return () => {
+      this.detach();
+    };
   }
 
   detach() {
@@ -675,6 +694,14 @@ export class Resizer implements ResizerConfig {
           let targetWidth: number;
           let targetHeight: number;
 
+          const expandLimitWidth =
+            this.resizingInitialWidth +
+            (index <= 5 ? this.expandLimitRight : this.expandLimitLeft);
+          const expandLimitHeight =
+            this.resizingInitialHeight +
+            (index >= 3 && index <= 8
+              ? this.expandLimitBottom
+              : this.expandLimitTop);
           if (this.maintainAspectRatio) {
             let baseWidth =
               this.resizingInitialWidth - this.aspectRatioOffsetWidth;
@@ -684,6 +711,7 @@ export class Resizer implements ResizerConfig {
               x: baseWidth * this.resizingWidthDirection,
               y: baseHeight * this.resizingHeightDirection,
             };
+            // Make sure baseWidth and baseHeight are positive.
             if (baseWidth <= 0 || baseHeight <= 0) {
               if (this.aspectRatio < 1) {
                 baseWidth = 1;
@@ -723,15 +751,39 @@ export class Resizer implements ResizerConfig {
               );
               targetBaseWidth = targetBaseHeight * this.aspectRatio;
             }
+            if (
+              targetBaseHeight >
+              expandLimitHeight - this.aspectRatioOffsetHeight
+            ) {
+              targetBaseHeight = Math.max(
+                expandLimitHeight - this.aspectRatioOffsetHeight,
+                1,
+              );
+              targetBaseWidth = targetBaseHeight * this.aspectRatio;
+            }
+            if (
+              targetBaseWidth >
+              expandLimitWidth - this.aspectRatioOffsetWidth
+            ) {
+              targetBaseWidth = Math.max(
+                expandLimitWidth - this.aspectRatioOffsetWidth,
+                1,
+              );
+              targetBaseHeight = targetBaseWidth / this.aspectRatio;
+            }
             targetWidth = targetBaseWidth + this.aspectRatioOffsetWidth;
             targetHeight = targetBaseHeight + this.aspectRatioOffsetHeight;
           } else {
-            targetWidth =
+            targetWidth = Math.min(
               this.resizingInitialWidth +
-              displacement.x * this.resizingWidthDirection;
-            targetHeight =
+              displacement.x * this.resizingWidthDirection,
+              expandLimitWidth,
+            );
+            targetHeight = Math.min(
               this.resizingInitialHeight +
-              displacement.y * this.resizingHeightDirection;
+              displacement.y * this.resizingHeightDirection,
+              expandLimitHeight,
+            );
           }
           if (this.resizingWidthDirection !== 0) {
             targetWidth = clamp(targetWidth, this.minWidth, this.maxWidth);
