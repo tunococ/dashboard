@@ -88,8 +88,16 @@ export function transformFromScreenCoordinates(
     m = new DOMMatrixReadOnly(getComputedStyle(e).transform).multiply(m);
     if (e.assignedSlot) {
       e = e.assignedSlot;
+    } else if (e.parentElement) {
+      e = e.parentElement;
+    } else {
+      const rootNode = e.getRootNode() as ShadowRoot;
+      if ((e as Node) !== rootNode && rootNode.host && e !== rootNode.host) {
+        e = rootNode.host;
+      } else {
+        e = null;
+      }
     }
-    e = e.parentElement;
   }
   const point = new DOMPointReadOnly(x, y).matrixTransform(m.inverse());
   return { x: point.x, y: point.y };
