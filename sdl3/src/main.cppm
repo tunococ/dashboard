@@ -19,7 +19,7 @@ using namespace std::chrono_literals;
 using Clock = std::chrono::steady_clock;
 
 // constexpr Clock::duration TICK_PERIOD = 16'666'666ns;
-constexpr Clock::duration TICK_PERIOD = 1s;
+constexpr Clock::duration TICK_PERIOD = 200ms;
 
 int main(int argc, char *argv[]) {
   App app{};

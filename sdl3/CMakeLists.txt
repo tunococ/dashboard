@@ -13,12 +13,16 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(CPM)
 
 CPMAddPackage(
-    NAME SDL3
-    GITHUB_REPOSITORY libsdl-org/SDL
-    GIT_TAG release-3.2.10
+  NAME SDL3
+  GITHUB_REPOSITORY libsdl-org/SDL
+  GIT_TAG release-3.2.10
 )
 
 add_subdirectory(libs)
 add_subdirectory(src)
 
+if(DASHBOARD_DEV)
+  include(CTest)
+  add_subdirectory(tests)
+endif()
 
