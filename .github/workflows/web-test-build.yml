@@ -1,7 +1,7 @@
 name: Test building web
 
 on:
-  # Runs on pull requests targeting the "pages/*" branches
+  # Runs on pull requests targeting "main" and "web"
   pull_request:
     branches:
       - main
@@ -11,8 +11,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Single deploy job since we're just deploying
-  publish:
+  build:
     defaults:
       run:
         working-directory: ./web
