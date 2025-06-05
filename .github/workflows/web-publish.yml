@@ -2,7 +2,7 @@
 name: Publish web to GitHub Pages
 
 on:
-  # Runs on pull requests targeting the "pages/*" branches
+  # Runs when "web" is updated
   push:
     branches:
       - web
