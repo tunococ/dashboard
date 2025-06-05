@@ -67,7 +67,7 @@ if (!background) {
 }
 
 let hideOverlay: number | undefined = undefined
-background.addEventListener("pointermove", (event: PointerEvent) => {
+background.addEventListener("pointermove", () => {
   clearTimeout(hideOverlay);
   overlay.style.opacity = "1";
   hideOverlay = setTimeout(() => {
