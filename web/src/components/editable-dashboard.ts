@@ -8,7 +8,7 @@ import seal from "../../public/seal.png";
 import { ZoomableView } from "./zoomable-view";
 import { MoveEvent, Mover } from "../modifiers/mover";
 import { ResizeEvent, Resizer } from "../modifiers/resizer";
-import { SelectableImage } from "./selectable-image";
+import { EditableImage } from "./editable-image";
 
 export class EditableDashboard extends HTMLElement {
   /**
@@ -50,7 +50,7 @@ export class EditableDashboard extends HTMLElement {
     super();
 
     const zoomableViewTag = ZoomableView.register();
-    const selectableImageTag = SelectableImage.register();
+    const editableImageTag = EditableImage.register();
 
     const template = document.createElement("template");
     template.innerHTML = `
@@ -121,8 +121,8 @@ export class EditableDashboard extends HTMLElement {
               <img src="${guangdang}" width=70 />
             </div>
             <div>
-              <${selectableImageTag} style="display: block; position: absolute; left: 0; top: 0; width: 200px; height: 200px; background-color: #7af;">
-              </${selectableImageTag}>
+              <${editableImageTag} style="display: block; position: absolute; left: 0; top: 0; width: 200px; height: 200px; background-color: #7af;">
+              </${editableImageTag}>
             </div>
             <div id="resizable" style="position: absolute; pointer-events: auto; bottom: 1em; left: 1em; width: 12em; height: 6em;">
               <div id="resizable-interior" style="background-color: #ddf; overflow: scroll; width: 100%; height: 100%; border: 2px solid transparent;">
