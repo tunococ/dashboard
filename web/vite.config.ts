@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -8,5 +9,10 @@ export default defineConfig({
     watch: {
       usePolling: true,
     },
+  },
+  test: {
+    include: [
+      "tests/**/*.test.ts",
+    ],
   },
 });
