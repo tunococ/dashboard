@@ -4,14 +4,26 @@ import viteConfig from "./vite.config";
 
 export default mergeConfig(
   viteConfig,
-  defineConfig(
-    {
-      test: {
-        exclude: [
-          "**/*.browser.test.ts",
+  defineConfig({
+    test: {
+      coverage: {
+        enabled: true,
+        include: [
+          "src/utils/**/*",
         ],
+        exclude: [
+          "src/browser-utils",
+        ],
+        reporter: [
+          "text",
+          "html",
+        ],
+        reportsDirectory: "./node-coverage",
       },
-    }
-  )
+      exclude: [
+        "./tests/browser-utils",
+      ],
+    },
+  })
 );
 

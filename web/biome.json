@@ -7,7 +7,14 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": ["dist/", "node_modules/"]
+    "include": [
+      "src/**/*.ts",
+      "tests/**/*.ts"
+    ],
+    "ignore": [
+      "dist/",
+      "node_modules/"
+    ]
   },
   "formatter": {
     "enabled": true,

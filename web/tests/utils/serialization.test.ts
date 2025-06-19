@@ -97,6 +97,9 @@ describe("convert function", () => {
     expect(str).toBe(JSON.stringify(obj));
     const recovered = convert(str, "object");
     expect(obj).toEqual(recovered);
+
+    const nullStr = convert(null, "string");
+    expect(nullStr).toBe("null");
   })
 
   it("should convert string to Blob", async () => {

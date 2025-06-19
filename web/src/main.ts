@@ -1,5 +1,4 @@
 import { EditableDashboard } from "./components/editable-dashboard";
-import { convert, deserialize, serialize } from "./utils/serialization";
 
 const app = document.getElementById("app");
 if (!app) {
@@ -16,9 +15,4 @@ app.innerHTML = `
     </div>
   </div>
 `;
-
-(window as any).deserialize = deserialize;
-(window as any).serialize = serialize;
-(window as any).convert = convert;
-
 

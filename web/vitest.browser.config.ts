@@ -4,20 +4,30 @@ import viteConfig from "./vite.config";
 
 export default mergeConfig(
   viteConfig,
-  defineConfig(
-    {
-      test: {
-        browser: {
-          provider: "playwright",
-          enabled: true,
-          instances: [
-            {
-              browser: "chromium",
-            },
-          ],
-        },
+  defineConfig({
+    test: {
+      coverage: {
+        enabled: true,
+        include: [
+          "src/utils/**/*.ts",
+          "src/browser-utils/**/*.ts",
+        ],
+        reporter: [
+          "text-summary",
+          "html",
+        ],
+        reportsDirectory: "./coverage",
       },
-    }
-  )
+      browser: {
+        provider: "playwright",
+        enabled: true,
+        instances: [
+          {
+            browser: "chromium",
+          },
+        ],
+      },
+    },
+  })
 );
 
