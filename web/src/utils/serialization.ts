@@ -165,17 +165,14 @@ export function makeDataURL(
   });
 }
 
-function parseAttributePath(path: string | string[] | undefined) {
-  if (typeof path === "string") {
-    return parseAttributePath([path]);
-  }
+function parseAttributePath(path: string | undefined) {
   if (path == null) {
     return [];
   }
-  return path.flatMap((p) => p.split("."));
+  return path.split(".");
 }
 
-export function getAttributeAtPath(value: Record<string, any>, path: string | string[] | undefined): any {
+export function getAttributeAtPath(value: Record<string, any>, path: string | undefined): any {
   const attrNames = parseAttributePath(path);
   if (attrNames.length === 0) {
     return value;
@@ -190,7 +187,7 @@ export function getAttributeAtPath(value: Record<string, any>, path: string | st
   return currentValue;
 }
 
-export function setAttributeAtPath(value: Record<string, any>, path: string | string[] | undefined, attrValue: any) {
+export function setAttributeAtPath(value: Record<string, any>, path: string | undefined, attrValue: any) {
   const attrNames = parseAttributePath(path);
   if (attrNames.length === 0) {
     throw "attribute path must not be empty";

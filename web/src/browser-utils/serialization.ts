@@ -345,7 +345,7 @@ export async function getIDBValue(
   dbName: string,
   storeName: string,
   key: string,
-  valuePath?: string | string[],
+  valuePath?: string,
 ): Promise<any> {
   const transaction = await getIDBTransaction(dbName, storeName, "readonly")
   const value = await requestPromise(transaction.objectStore(storeName).get(key));
@@ -358,9 +358,9 @@ export async function getIDBValue(
 export async function putIDBValue(
   dbName: string,
   storeName: string,
-  keyPath: string | string[] | undefined,
+  keyPath: string | undefined,
   key: string,
-  valuePath: string | string[] | undefined,
+  valuePath: string | undefined,
   value: any,
 ) {
   const transaction = await getIDBTransaction(dbName, storeName, "readwrite")
@@ -376,9 +376,9 @@ export async function putIDBValue(
 export async function addIDBValue(
   dbName: string,
   storeName: string,
-  keyPath: string | string[] | undefined,
+  keyPath: string | undefined,
   key: string,
-  valuePath: string | string[] | undefined,
+  valuePath: string | undefined,
   value: any,
 ) {
   const transaction = await getIDBTransaction(dbName, storeName, "readwrite")

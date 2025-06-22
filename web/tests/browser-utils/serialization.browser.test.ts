@@ -11,11 +11,11 @@ describe("IndexedDB convenience functions", () => {
 
   function storeFunctions(dbName: string, storeName: string, keyPath: string) {
     return {
-      get: (key: string, valuePath?: string | string[]) =>
+      get: (key: string, valuePath?: string) =>
         getIDBValue(dbName, storeName, key, valuePath),
-      put: (key: string, valuePath: string | string[] | undefined, value: any) =>
+      put: (key: string, valuePath: string | undefined, value: any) =>
         putIDBValue(dbName, storeName, keyPath, key, valuePath, value),
-      add: (key: string, valuePath: string | string[] | undefined, value: any) =>
+      add: (key: string, valuePath: string | undefined, value: any) =>
         addIDBValue(dbName, storeName, keyPath, key, valuePath, value),
     };
   }
@@ -40,14 +40,14 @@ describe("IndexedDB convenience functions", () => {
     await put1("food", "breakfast", ["Omlette", "Peanut butter and jelly sandwich"]);
     expect(await get1("food", "dinner.1")).toBe("Shoyu and pepper rice");
     expect(await get1("food", "dinner.2")).toBeUndefined();
-    expect(await get1("medicine", [])).toBeUndefined();
+    expect(await get1("medicine")).toBeUndefined();
   })
 
   it("get and put should work with nested values", async () => {
     await put1("farewell", "phrases.0", "Goodbye.");
     await put1("farewell", "phrases.1", "See you later.");
     await put1("farewell", "phrases.2", "Take care.");
-    expect(await get1("farewell", [])).toEqual({
+    expect(await get1("farewell")).toEqual({
       key: "farewell",
       phrases: {
         0: "Goodbye.",
@@ -55,7 +55,7 @@ describe("IndexedDB convenience functions", () => {
         2: "Take care.",
       },
     })
-    expect(await get1("farewell", ["phrases", "0"])).toBe("Goodbye.");
+    expect(await get1("farewell", "phrases.0")).toBe("Goodbye.");
     expect(await get1("farewell", "phrases.1")).toBe("See you later.");
 
     await put1("dialog", "speeches", [
@@ -65,20 +65,20 @@ describe("IndexedDB convenience functions", () => {
       { speaker: "Jane", text: "I'm doing well too." },
     ]);
     expect(await get1("dialog", "speeches.2.speaker")).toBe("John");
-    expect(await get1("dialog", ["speeches", "3.text"])).toBe("I'm doing well too.");
+    expect(await get1("dialog", "speeches.3.text")).toBe("I'm doing well too.");
   })
 
   it("put should replace and existing value with the same key", async () => {
     await put1("greeting", "first", "Hello.");
     await put1("greeting", "second", "How are you?");
-    expect(await get1("greeting", [])).toEqual({
+    expect(await get1("greeting")).toEqual({
       key: "greeting",
       first: "Hello.",
       second: "How are you?",
     });
 
     await put1("greeting", "first", "Hi!");
-    expect(await get1("greeting", undefined)).toEqual({
+    expect(await get1("greeting")).toEqual({
       key: "greeting",
       first: "Hi!",
       second: "How are you?",
@@ -93,7 +93,7 @@ describe("IndexedDB convenience functions", () => {
     await put2("00:00:00", "time.finished", "00:01:00");
     await put2("00:00:00", "task", "Wash hands");
     await put2("00:01:00", "time.finished", "00:01:20");
-    expect(await get2("00:00:00", [])).toEqual({
+    expect(await get2("00:00:00")).toEqual({
       time: {
         created: "00:00:00",
         finished: "00:01:00",
@@ -110,7 +110,7 @@ describe("IndexedDB convenience functions", () => {
         created: "00:02:00",
       }
     };
-    await expect(put2("00:02:00", [], value)).rejects.toThrow();
+    await expect(put2("00:02:00", undefined, value)).rejects.toThrow();
   })
 
   it("add should not modify existing values", async () => {

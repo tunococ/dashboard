@@ -1,33 +1,105 @@
-export class SyncPromise<T> {
-  executor: (resolve: (value: T) => void, reject: (error: any) => void) => void;
+export type ResolveType<T> = (value?: T | SyncPromise<T>) => void;
+
+type ValueType<T> = T extends PromiseLike<infer U> ? U : never;
+
+type AllReturnType<T extends readonly any[]> = {
+  [K in keyof T]: ValueType<T[K]>;
+}
+
+type AllSettledReturnType<T extends readonly any[]> = {
+  [K in keyof T]: {
+    status: "fulfilled" | "rejected";
+    value?: ValueType<T[K]>;
+    reason?: any;
+  };
+}
+
+type AnyReturnType<T extends readonly any[]> = ValueType<T[number]>;
+
+export class SyncPromise<T = any> implements PromiseLike<T> {
+  executor: (resolve: ResolveType<T>, reject: (error?: any) => void) => void;
 
   constructor(
-    executor: (resolve: (value: T) => void, reject: (error: any) => void) => void,
+    executor: (resolve: ResolveType<T>, reject: (error?: any) => void) => void,
   ) {
     this.executor = executor;
-    this.resolved = [];
-    this.rejected = [];
   }
 
-  private resolved: T[] = [];
+  static lazy<T = any>(executor: (resolve: ResolveType<T>, reject: (error?: any) => void) => void) {
+    return new SyncPromise<T>(executor);
+  }
+
+  static eager<T = any>(executor: (resolve: ResolveType<T>, reject: (error?: any) => void) => void) {
+    return (new SyncPromise<T>(executor)).execute();
+  }
+
+  private resolved: (T | undefined)[] = [];
   private rejected: any[] = [];
-  private executed: boolean = false;
+  private resolving: (T | SyncPromise<T> | undefined)[] = [];
+  private rejecting: (T | SyncPromise<any> | undefined)[] = [];
   private settled: boolean = false;
 
-  private _resolve = (value: T) => {
-    if (!this.settled && this.resolved.length === 0) {
-      this.resolved.push(value);
-      this.settled = true;
+  private _doResolve = (value?: T) => {
+    this.resolving = [value];
+    this.rejecting = [];
+    this.resolved = [value];
+    this.settled = true;
+    this.notifyListeners(true);
+  }
+
+  private _doReject = (error?: T) => {
+    this.resolving = [];
+    this.rejecting = [error];
+    this.rejected = [error];
+    this.settled = true;
+    this.notifyListeners(false);
+  }
+
+  private _resolve = (value?: T | SyncPromise<any>) => {
+    if (this.settled) {
+      return;
+    }
+    if (this.resolving.length === 0 && this.rejecting.length === 0) {
+      this.resolving.push(value);
+    }
+    if (this.resolving[0] === value) {
+      if (isPromiseLike(value)) {
+        const step = value.then(
+          this._doResolve,
+          this._doReject,
+        );
+        if (step instanceof SyncPromise) {
+          step.execute();
+        }
+      } else {
+        this._doResolve(value as T);
+      }
+    }
+  };
+
+  private _reject = (error?: any) => {
+    if (this.settled) {
+      return;
+    }
+    if (this.resolving.length === 0 && this.rejecting.length === 0) {
+      this.rejecting.push(error);
+    }
+    if (this.rejecting[0] === error) {
+      if (isPromiseLike(error)) {
+        const step = error.then(
+          this._doReject,
+          this._doReject,
+        );
+        if (step instanceof SyncPromise) {
+          step.execute();
+        }
+      } else {
+        this._doReject(error);
+      }
     }
   }
 
-  private _reject = (error: any) => {
-    if (!this.settled && this.rejected.length === 0) {
-      this.rejected.push(error);
-      this.settled = true;
-    }
-  }
-
+  private executed: boolean = false;
   execute() {
     if (!this.executed) {
       this.executed = true;
@@ -43,28 +115,32 @@ export class SyncPromise<T> {
     return this;
   }
 
-  isExecuted() {
+  get eager(): this {
+    return this.execute();
+  }
+
+  get isExecuted() {
     return this.executed;
   }
 
-  isSettled() {
+  get isSettled() {
     return this.settled;
   }
 
-  isResolved() {
+  get isFulfilled() {
     return this.resolved.length > 0;
   }
 
-  isRejected() {
+  get isRejected() {
     return this.rejected.length > 0;
   }
 
-  get value() {
-    return this.valueOr(undefined);
+  get value(): T | undefined {
+    return this.valueOr(undefined) as T;
   }
 
-  valueOr<U>(fallback: U) {
-    return this.isResolved() ? this.resolved[0] : fallback;
+  valueOr<U>(fallback: U): T | U {
+    return this.isFulfilled ? (this.resolved[0] as T) : fallback;
   }
 
   get error() {
@@ -72,7 +148,7 @@ export class SyncPromise<T> {
   }
 
   errorOr(fallback: any) {
-    return this.isRejected() ? this.rejected[0] : fallback;
+    return this.isRejected ? this.rejected[0] : fallback;
   }
 
   tryGet() {
@@ -84,7 +160,7 @@ export class SyncPromise<T> {
     if (!this.settled) {
       return fallback;
     }
-    if (this.isRejected()) {
+    if (this.isRejected) {
       throw this.error;
     }
     return this.value;
@@ -95,12 +171,23 @@ export class SyncPromise<T> {
     if (!this.settled) {
       throw new Error("SyncPromise.get called on a promise that is not settled");
     }
-    if (this.isRejected()) {
+    if (this.isRejected) {
       throw this.error;
     }
     return this.value!;
   }
 
+  then<V>(
+    onResolved: undefined,
+    onRejected: (error: any) => V,
+  ): SyncPromise<V>;
+  then<U>(
+    onResolved: (value: T) => SyncPromise<U>,
+  ): SyncPromise<U>;
+  then<U, V = U>(
+    onResolved: (value: T) => SyncPromise<U>,
+    onRejected: (error: any) => V,
+  ): SyncPromise<U | V>;
   then<U>(
     onResolved: (value: T) => U,
   ): SyncPromise<U>;
@@ -109,37 +196,60 @@ export class SyncPromise<T> {
     onRejected: (error: any) => V,
   ): SyncPromise<U | V>;
   then<U, V = U>(
-    onResolved: (value: T) => U,
+    onResolved: (value: T) => U = (value: T) => (value as unknown as U),
     onRejected: (error: any) => V = (error: any) => { throw error; },
   ) {
+    if (this.isFulfilled) {
+      return SyncPromise.resolve<T>(this.resolved[0] as T).then(onResolved, onRejected);
+    }
+    if (this.isRejected) {
+      return SyncPromise.reject<T>(this.rejected[0]).then(onResolved, onRejected);
+    }
     return new SyncPromise<U | V>(
-      (resolve: (value: U | V) => void, reject: (error: any) => void) => {
-        try {
-          this.executor(
-            (value: T) => {
-              resolve(onResolved(value));
-            },
-            (error: any) => {
-              try {
-                resolve(onRejected(error));
-              } catch (e) {
-                reject(e);
-              }
-            },
-          );
-        } catch (error) {
+      (resolve, reject) => {
+        let flatReject: (error?: any) => void;
+
+        const flatResolve = (value?: any) => {
+
+          if (isPromiseLike(value)) {
+            const step = value.then(flatResolve, flatReject);
+            if (step instanceof SyncPromise) {
+              step.execute();
+            }
+            return;
+          }
+          resolve(onResolved(value));
+        };
+
+        flatReject = (error?: any) => {
+          if (isPromiseLike(error)) {
+            const step = error.then(flatReject, flatReject);
+            if (step instanceof SyncPromise) {
+              step.execute();
+            }
+            return;
+          }
           try {
-            resolve(onRejected(error));
+            resolve(onRejected(error) as any);
           } catch (e) {
             reject(e);
           }
+        };
+
+        try {
+          this.executor(
+            flatResolve,
+            flatReject,
+          );
+        } catch (error) {
+          flatReject(error);
         }
       });
   }
 
   catch<U>(onRejected: (error: any) => U) {
     return this.then(
-      (value: T) => value,
+      undefined,
       onRejected,
     );
   }
@@ -157,21 +267,102 @@ export class SyncPromise<T> {
     );
   }
 
-  static resolve<T>(value: T) {
-    return new SyncPromise<T>(resolve => resolve(value));
+  static resolve<T>(value: SyncPromise<T>): SyncPromise<T>;
+  static resolve<T = any>(value: SyncPromise<any>): SyncPromise<T>;
+  static resolve(): SyncPromise<void>;
+  static resolve<T = any>(value?: T): SyncPromise<T>;
+  static resolve<T>(value?: T | SyncPromise<any>) {
+    return SyncPromise.lazy<T>(resolve => resolve(value));
   }
 
-  static reject<T = undefined>(error: any) {
-    return new SyncPromise<T>(() => { throw error; });
+  static reject<T = void>(error?: SyncPromise<any>): SyncPromise<T>;
+  static reject<T = void>(error?: any): SyncPromise<T>;
+  static reject<T = void>(error?: any) {
+    return SyncPromise.lazy<T>(() => { throw error; });
   }
 
-  static withResolvers<T>() {
+  private _onfulfilled: (value?: T) => void = (_value?: T) => { };
+  private _onrejected: (error?: any) => void = (_error?: any) => { };
+  private _onFulfilledListeners: ((value?: T) => void)[] = [this._onfulfilled];
+  private _onRejectedListeners: ((value?: T) => void)[] = [this._onrejected];
+
+  addEventListener(eventName: "fulfilled" | "rejected", listener: (value?: T) => void) {
+    if (eventName === "fulfilled") {
+      if (this.isFulfilled) {
+        listener(this.value);
+      } else if (!this.isSettled) {
+        this._onFulfilledListeners.push(listener);
+      }
+    } else if (eventName === "rejected") {
+      if (this.isRejected) {
+        listener(this.error);
+      } else if (!this.isSettled) {
+        this._onRejectedListeners.push(listener);
+      }
+    }
+  }
+
+  removeEventListener(eventName: "fulfilled" | "rejected", listener: (value?: T) => void) {
+    if (eventName === "fulfilled") {
+      const findIndex = this._onFulfilledListeners.findIndex(l => l === listener);
+      if (findIndex >= 0) {
+        this._onFulfilledListeners.splice(findIndex, 1);
+      }
+    } else if (eventName === "rejected") {
+      const findIndex = this._onRejectedListeners.findIndex(l => l === listener);
+      if (findIndex >= 0) {
+        this._onRejectedListeners.splice(findIndex, 1);
+      }
+    }
+  }
+
+  get onfulfilled() {
+    return this._onfulfilled;
+  }
+
+  set onfulfilled(listener: (value?: T) => void) {
+    this.removeEventListener("fulfilled", this._onfulfilled);
+    this.addEventListener("fulfilled", listener);
+    this._onfulfilled = listener;
+  }
+
+  get onrejected() {
+    return this._onrejected;
+  }
+
+  set onrejected(listener: (value?: T) => void) {
+    this.removeEventListener("rejected", this._onrejected);
+    this.addEventListener("rejected", listener);
+    this._onrejected = listener;
+  }
+
+  private notifyListeners(resolved: boolean) {
+    if (resolved) {
+      for (const listener of this._onFulfilledListeners) {
+        listener(this.value);
+      }
+    } else {
+      for (const listener of this._onRejectedListeners) {
+        listener(this.error);
+      }
+    }
+    this._onFulfilledListeners = [];
+    this._onRejectedListeners = [];
+  }
+
+  wait() {
+    return new Promise((res, rej) => {
+      this.addEventListener("fulfilled", res);
+      this.addEventListener("rejected", rej);
+    });
+  }
+
+  static withResolvers<T = any>() {
     let resolve, reject;
-    const promise = new SyncPromise<T>((res, rej) => {
+    const promise = SyncPromise.eager<T>((res, rej) => {
       resolve = res;
       reject = rej;
     });
-    promise.execute();
     return {
       promise,
       reject,
@@ -183,14 +374,107 @@ export class SyncPromise<T> {
     return new SyncPromise<T>(res => res(func(...args)));
   }
 
-  poll(periodMs: number = 50) {
-    return (async () => {
-      this.execute();
-      while (!this.isSettled()) {
-        await new Promise(cont => setTimeout(cont, periodMs));
+  static all<P extends readonly any[]>(promises: P): SyncPromise<AllReturnType<P>>;
+  static all<P extends readonly any[]>(promiseIterable: P): SyncPromise<any> {
+    const promises = Array.from(promiseIterable);
+    if (promises.length === 0) {
+      return SyncPromise.resolve([]);
+    }
+    return new SyncPromise<any>((res, rej) => {
+      const results: any[] = new Array(promises.length);
+      let numSettled = 0;
+      for (let i = 0; i < promises.length; ++i) {
+        const promise = promises[i];
+        const index = i;
+        promise.addEventListener("fulfilled", (value: any) => {
+          results[index] = value;
+          ++numSettled;
+          if (numSettled === results.length) {
+            res(results);
+          }
+        });
+        promise.addEventListener("rejected", rej);
       }
-      return this.get();
-    })();
+    });
   }
+
+  static allSettled<P extends readonly any[]>(promises: P): SyncPromise<AllSettledReturnType<P>>;
+  static allSettled<P extends readonly any[]>(promiseIterable: P): SyncPromise<any> {
+    const promises = Array.from(promiseIterable);
+    if (promises.length === 0) {
+      return SyncPromise.resolve([]);
+    }
+    return new SyncPromise<any>(res => {
+      const results: any[] = (new Array(promises.length));
+      let numSettled = 0;
+      for (let i = 0; i < promises.length; ++i) {
+        const promise = promises[i];
+        const index = i;
+        promise.addEventListener("fulfilled", (value: any) => {
+          results[index] = {
+            status: "fulfilled",
+            value,
+          };
+          ++numSettled;
+          if (numSettled === results.length) {
+            res(results);
+          }
+        });
+        promise.addEventListener("rejected", (reason: any) => {
+          results[index] = {
+            status: "rejected",
+            reason,
+          };
+          ++numSettled;
+          if (numSettled === results.length) {
+            res(results);
+          }
+        });
+      }
+    });
+  }
+
+  static any<P extends readonly any[]>(promises: P): SyncPromise<AnyReturnType<P>>;
+  static any<P extends readonly any[]>(promiseIterable: P): SyncPromise<any> {
+    const promises = Array.from(promiseIterable);
+    if (promises.length === 0) {
+      return SyncPromise.reject(new AggregateError([]));
+    }
+    return new SyncPromise<any>((res, rej) => {
+      const reasons: any[] = new Array(promises.length);
+      let numSettled = 0;
+      for (let i = 0; i < promises.length; ++i) {
+        const promise = promises[i];
+        const index = i;
+        promise.addEventListener("fulfilled", res);
+        promise.addEventListener("rejected", (reason: any) => {
+          reasons[index] = reason;
+          ++numSettled;
+          if (numSettled === reasons.length) {
+            rej(new AggregateError(reasons));
+          }
+        });
+      }
+    });
+  }
+
+  static race<P extends readonly any[]>(promises: P): SyncPromise<AnyReturnType<P>>;
+  static race<P extends readonly any[]>(promiseIterable: P): SyncPromise<any> {
+    const promises = Array.from(promiseIterable);
+    if (promises.length === 0) {
+      throw new Error("SyncPromise.any -- input promise list cannot be empty");
+    }
+    return new SyncPromise<any>((res, rej) => {
+      for (const promise of promises) {
+        promise.addEventListener("fulfilled", res);
+        promise.addEventListener("rejected", rej);
+      }
+    });
+  }
+
 }
+
+function isPromiseLike<T = any>(x: any): x is PromiseLike<T> {
+  return (typeof x === "object" || typeof x === "function") && typeof x.then === "function";
+};
 
