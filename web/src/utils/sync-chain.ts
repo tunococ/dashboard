@@ -1,6 +1,10 @@
-export type ResolveType<T> = (value?: T | SyncPromise<T>) => void;
+export type ResolveType<T> = (value?: T | PromiseLike<T>) => void;
 
 type ValueType<T> = T extends PromiseLike<infer U> ? U : never;
+
+type SyncChainValueType<T> = T extends PromiseLike<infer U> ? U : T;
+
+type SyncChainType<T> = SyncChain<SyncChainValueType<T>>;
 
 type AllReturnType<T extends readonly any[]> = {
   [K in keyof T]: ValueType<T[K]>;
@@ -16,27 +20,38 @@ type AllSettledReturnType<T extends readonly any[]> = {
 
 type AnyReturnType<T extends readonly any[]> = ValueType<T[number]>;
 
-export class SyncPromise<T = any> implements PromiseLike<T> {
+/**
+ * @brief Synchronous chain of operations
+ *
+ * This class exposes a Promise-like interface that allows a chain of
+ * operations to be executed synchronously.
+ *
+ */
+export class SyncChain<T = any> implements PromiseLike<T> {
   executor: (resolve: ResolveType<T>, reject: (error?: any) => void) => void;
 
   constructor(
     executor: (resolve: ResolveType<T>, reject: (error?: any) => void) => void,
+    lazy: boolean = false,
   ) {
     this.executor = executor;
+    if (!lazy) {
+      this.run();
+    }
   }
 
   static lazy<T = any>(executor: (resolve: ResolveType<T>, reject: (error?: any) => void) => void) {
-    return new SyncPromise<T>(executor);
+    return new SyncChain<T>(executor, true);
   }
 
   static eager<T = any>(executor: (resolve: ResolveType<T>, reject: (error?: any) => void) => void) {
-    return (new SyncPromise<T>(executor)).execute();
+    return new SyncChain<T>(executor);
   }
 
   private resolved: (T | undefined)[] = [];
   private rejected: any[] = [];
-  private resolving: (T | SyncPromise<T> | undefined)[] = [];
-  private rejecting: (T | SyncPromise<any> | undefined)[] = [];
+  private resolving: (T | PromiseLike<T> | undefined)[] = [];
+  private rejecting: (T | PromiseLike<any> | undefined)[] = [];
   private settled: boolean = false;
 
   private _doResolve = (value?: T) => {
@@ -55,7 +70,7 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
     this.notifyListeners(false);
   }
 
-  private _resolve = (value?: T | SyncPromise<any>) => {
+  private _resolve = (value?: T | PromiseLike<any>) => {
     if (this.settled) {
       return;
     }
@@ -64,12 +79,15 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
     }
     if (this.resolving[0] === value) {
       if (isPromiseLike(value)) {
+        if (value instanceof SyncChain) {
+          value.run();
+        }
         const step = value.then(
           this._doResolve,
           this._doReject,
         );
-        if (step instanceof SyncPromise) {
-          step.execute();
+        if (step instanceof SyncChain) {
+          step.run();
         }
       } else {
         this._doResolve(value as T);
@@ -86,12 +104,15 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
     }
     if (this.rejecting[0] === error) {
       if (isPromiseLike(error)) {
+        if (error instanceof SyncChain) {
+          error.run();
+        }
         const step = error.then(
           this._doReject,
           this._doReject,
         );
-        if (step instanceof SyncPromise) {
-          step.execute();
+        if (step instanceof SyncChain) {
+          step.run();
         }
       } else {
         this._doReject(error);
@@ -99,10 +120,10 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
     }
   }
 
-  private executed: boolean = false;
-  execute() {
-    if (!this.executed) {
-      this.executed = true;
+  private started: boolean = false;
+  run() {
+    if (!this.started) {
+      this.started = true;
       try {
         this.executor(
           this._resolve,
@@ -115,12 +136,8 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
     return this;
   }
 
-  get eager(): this {
-    return this.execute();
-  }
-
   get isExecuted() {
-    return this.executed;
+    return this.started;
   }
 
   get isSettled() {
@@ -156,7 +173,7 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
   }
 
   tryGetOr<U>(fallback?: U) {
-    this.execute();
+    this.run();
     if (!this.settled) {
       return fallback;
     }
@@ -167,9 +184,9 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
   }
 
   get(): T {
-    this.execute();
+    this.run();
     if (!this.settled) {
-      throw new Error("SyncPromise.get called on a promise that is not settled");
+      throw new Error("SyncChain.get called on a promise that is not settled");
     }
     if (this.isRejected) {
       throw this.error;
@@ -180,32 +197,53 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
   then<V>(
     onResolved: undefined,
     onRejected: (error: any) => V,
-  ): SyncPromise<V>;
+  ): SyncChain<V>;
   then<U>(
-    onResolved: (value: T) => SyncPromise<U>,
-  ): SyncPromise<U>;
+    onResolved: (value: T) => PromiseLike<U>,
+  ): SyncChain<U>;
   then<U, V = U>(
-    onResolved: (value: T) => SyncPromise<U>,
+    onResolved: (value: T) => PromiseLike<U>,
     onRejected: (error: any) => V,
-  ): SyncPromise<U | V>;
+  ): SyncChain<U | V>;
   then<U>(
     onResolved: (value: T) => U,
-  ): SyncPromise<U>;
+  ): SyncChain<U>;
   then<U, V = U>(
     onResolved: (value: T) => U,
     onRejected: (error: any) => V,
-  ): SyncPromise<U | V>;
+  ): SyncChain<U | V>;
   then<U, V = U>(
-    onResolved: (value: T) => U = (value: T) => (value as unknown as U),
-    onRejected: (error: any) => V = (error: any) => { throw error; },
+    onResolved: (value?: any) => U = (value?: T) => (value as unknown as U),
+    onRejected: (error?: any) => V = (error: any) => { throw error; },
   ) {
+    return new SyncChain<U | V>((resolve, reject) => {
+      const flatReject = (error?: any) => {
+        try {
+          resolve(onRejected(error) as any);
+        } catch (e) {
+          reject(e);
+        }
+      };
+
+      const flatResolve = (value?: any) => {
+        try {
+          resolve(onResolved(value));
+        } catch (e) {
+          flatReject(e);
+        }
+      };
+
+      this.addEventListener("fulfilled", flatResolve);
+      this.addEventListener("rejected", flatReject);
+    });
+    /*
     if (this.isFulfilled) {
-      return SyncPromise.resolve<T>(this.resolved[0] as T).then(onResolved, onRejected);
+      return SyncChain.resolve<T>(this.resolved[0] as T).then(onResolved, onRejected);
     }
     if (this.isRejected) {
-      return SyncPromise.reject<T>(this.rejected[0]).then(onResolved, onRejected);
+      return SyncChain.reject<T>(this.rejected[0]).then(onResolved, onRejected);
     }
-    return new SyncPromise<U | V>(
+    return new SyncChain<U | V>(
       (resolve, reject) => {
         let flatReject: (error?: any) => void;
 
@@ -213,7 +251,7 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
 
           if (isPromiseLike(value)) {
             const step = value.then(flatResolve, flatReject);
-            if (step instanceof SyncPromise) {
+            if (step instanceof SyncChain) {
               step.execute();
             }
             return;
@@ -224,7 +262,7 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
         flatReject = (error?: any) => {
           if (isPromiseLike(error)) {
             const step = error.then(flatReject, flatReject);
-            if (step instanceof SyncPromise) {
+            if (step instanceof SyncChain) {
               step.execute();
             }
             return;
@@ -245,6 +283,7 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
           flatReject(error);
         }
       });
+      */
   }
 
   catch<U>(onRejected: (error: any) => U) {
@@ -267,18 +306,16 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
     );
   }
 
-  static resolve<T>(value: SyncPromise<T>): SyncPromise<T>;
-  static resolve<T = any>(value: SyncPromise<any>): SyncPromise<T>;
-  static resolve(): SyncPromise<void>;
-  static resolve<T = any>(value?: T): SyncPromise<T>;
-  static resolve<T>(value?: T | SyncPromise<any>) {
-    return SyncPromise.lazy<T>(resolve => resolve(value));
+  static resolve<T>(value: T | PromiseLike<T>): SyncChain<T>;
+  static resolve(): SyncChain<void>;
+  static resolve<T>(value?: T | SyncChain<T>) {
+    return SyncChain.eager<T>(resolve => resolve(value));
   }
 
-  static reject<T = void>(error?: SyncPromise<any>): SyncPromise<T>;
-  static reject<T = void>(error?: any): SyncPromise<T>;
+  static reject<T = void>(error?: PromiseLike<any>): SyncChain<T>;
+  static reject<T = void>(error?: any): SyncChain<T>;
   static reject<T = void>(error?: any) {
-    return SyncPromise.lazy<T>(() => { throw error; });
+    return SyncChain.eager<T>(() => { throw error; });
   }
 
   private _onfulfilled: (value?: T) => void = (_value?: T) => { };
@@ -286,7 +323,10 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
   private _onFulfilledListeners: ((value?: T) => void)[] = [this._onfulfilled];
   private _onRejectedListeners: ((value?: T) => void)[] = [this._onrejected];
 
-  addEventListener(eventName: "fulfilled" | "rejected", listener: (value?: T) => void) {
+  addEventListener(eventName: "fulfilled", listener: (value: T) => void): this;
+  addEventListener(eventName: "fulfilled", listener: () => void): this;
+  addEventListener(eventName: "rejected", listener: (error?: any) => void): this;
+  addEventListener(eventName: "fulfilled" | "rejected", listener: (value?: any) => void) {
     if (eventName === "fulfilled") {
       if (this.isFulfilled) {
         listener(this.value);
@@ -300,9 +340,10 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
         this._onRejectedListeners.push(listener);
       }
     }
+    return this;
   }
 
-  removeEventListener(eventName: "fulfilled" | "rejected", listener: (value?: T) => void) {
+  removeEventListener(eventName: "fulfilled" | "rejected", listener: (value?: any) => void) {
     if (eventName === "fulfilled") {
       const findIndex = this._onFulfilledListeners.findIndex(l => l === listener);
       if (findIndex >= 0) {
@@ -350,7 +391,7 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
     this._onRejectedListeners = [];
   }
 
-  wait() {
+  promise() {
     return new Promise((res, rej) => {
       this.addEventListener("fulfilled", res);
       this.addEventListener("rejected", rej);
@@ -359,7 +400,7 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
 
   static withResolvers<T = any>() {
     let resolve, reject;
-    const promise = SyncPromise.eager<T>((res, rej) => {
+    const promise = SyncChain.eager<T>((res, rej) => {
       resolve = res;
       reject = rej;
     });
@@ -370,17 +411,36 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
     }
   }
 
-  static try<T, Args extends []>(func: (...args: Args) => T, ...args: Args) {
-    return new SyncPromise<T>(res => res(func(...args)));
+  static try<Args extends any[], F extends (...args: Args) => any>(
+    func?: F,
+    ...args: Args
+  ): SyncChainType<ReturnType<F>>;
+  static try<Args extends any[], F extends (...args: Args) => any>(
+    func: F = (() => { }) as any,
+    ...args: Args
+  ) {
+    return SyncChain.eager(res => res(func(...args)));
   }
 
-  static all<P extends readonly any[]>(promises: P): SyncPromise<AllReturnType<P>>;
-  static all<P extends readonly any[]>(promiseIterable: P): SyncPromise<any> {
+  static defer<Args extends any[], F extends (...args: Args) => any>(
+    func?: F,
+    ...args: Args
+  ): SyncChainType<ReturnType<F>>;
+  static defer<Args extends any[], F extends (...args: Args) => any>(
+    func: F = (() => { }) as any,
+    ...args: Args
+  ) {
+    return SyncChain.lazy(res => res(func(...args)));
+  }
+
+  static all(promises: []): SyncChain<[]>;
+  static all<P extends readonly any[]>(promises: P): SyncChain<AllReturnType<P>>;
+  static all<P extends readonly any[]>(promiseIterable: P): SyncChain<any> {
     const promises = Array.from(promiseIterable);
     if (promises.length === 0) {
-      return SyncPromise.resolve([]);
+      return SyncChain.resolve([]);
     }
-    return new SyncPromise<any>((res, rej) => {
+    return new SyncChain<any>((res, rej) => {
       const results: any[] = new Array(promises.length);
       let numSettled = 0;
       for (let i = 0; i < promises.length; ++i) {
@@ -398,13 +458,14 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
     });
   }
 
-  static allSettled<P extends readonly any[]>(promises: P): SyncPromise<AllSettledReturnType<P>>;
-  static allSettled<P extends readonly any[]>(promiseIterable: P): SyncPromise<any> {
+  static allSettled(promises: []): SyncChain<AllSettledReturnType<SyncChain<void>[]>>;
+  static allSettled<P extends readonly any[]>(promises: P): SyncChain<AllSettledReturnType<P>>;
+  static allSettled<P extends readonly any[]>(promiseIterable: P): SyncChain<any> {
     const promises = Array.from(promiseIterable);
     if (promises.length === 0) {
-      return SyncPromise.resolve([]);
+      return SyncChain.resolve([]);
     }
-    return new SyncPromise<any>(res => {
+    return new SyncChain<any>(res => {
       const results: any[] = (new Array(promises.length));
       let numSettled = 0;
       for (let i = 0; i < promises.length; ++i) {
@@ -434,13 +495,14 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
     });
   }
 
-  static any<P extends readonly any[]>(promises: P): SyncPromise<AnyReturnType<P>>;
-  static any<P extends readonly any[]>(promiseIterable: P): SyncPromise<any> {
+  static any(promises: []): SyncChain<void>;
+  static any<P extends readonly any[]>(promises: P): SyncChain<AnyReturnType<P>>;
+  static any<P extends readonly any[]>(promiseIterable: P): SyncChain<any> {
     const promises = Array.from(promiseIterable);
     if (promises.length === 0) {
-      return SyncPromise.reject(new AggregateError([]));
+      return SyncChain.reject(new AggregateError([]));
     }
-    return new SyncPromise<any>((res, rej) => {
+    return new SyncChain<any>((res, rej) => {
       const reasons: any[] = new Array(promises.length);
       let numSettled = 0;
       for (let i = 0; i < promises.length; ++i) {
@@ -458,13 +520,14 @@ export class SyncPromise<T = any> implements PromiseLike<T> {
     });
   }
 
-  static race<P extends readonly any[]>(promises: P): SyncPromise<AnyReturnType<P>>;
-  static race<P extends readonly any[]>(promiseIterable: P): SyncPromise<any> {
+  static race(promises: []): SyncChain<void>;
+  static race<P extends readonly any[]>(promises: P): SyncChain<AnyReturnType<P>>;
+  static race<P extends readonly any[]>(promiseIterable: P): SyncChain<any> {
     const promises = Array.from(promiseIterable);
     if (promises.length === 0) {
-      throw new Error("SyncPromise.any -- input promise list cannot be empty");
+      throw new Error("SyncChain.any -- input promise list cannot be empty");
     }
-    return new SyncPromise<any>((res, rej) => {
+    return new SyncChain<any>((res, rej) => {
       for (const promise of promises) {
         promise.addEventListener("fulfilled", res);
         promise.addEventListener("rejected", rej);
