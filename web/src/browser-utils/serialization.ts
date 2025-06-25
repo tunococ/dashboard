@@ -1,4 +1,6 @@
 import { ConversionOptions, convert, DataType, getAttributeAtPath, makeDataURL, makeObjectURL, setAttributeAtPath, } from "../utils/serialization";
+import { SyncChain } from "../utils/sync-chain";
+import { idbDatabase, idbTransaction, requestChain } from "./idb";
 
 export type OpfsLocation = {
   type: "opfs";
@@ -159,38 +161,7 @@ export async function deserialize(
       if (valuePath == null) {
         throw "valuePath must be defined";
       }
-      return await new Promise((res, rej) => {
-        try {
-          const openRequest = indexedDB.open(dbName);
-          openRequest.onerror = () => {
-            rej(`Failed to open IDB "${dbName}"`);
-          };
-          openRequest.onsuccess = () => {
-            try {
-              const db = openRequest.result;
-              const transaction = db.transaction([storeName], "readonly");
-              const store = transaction.objectStore(storeName);
-              const getRequest: IDBRequest = store.get(key);
-              getRequest.onsuccess = () => {
-                let { result } = getRequest;
-                try {
-                  res(convert(getAttributeAtPath(result, valuePath), targetType, options));
-                } catch (e) {
-                  rej(e);
-                }
-              }
-              getRequest.onerror = () => {
-                rej(`Failed to access IDB store`);
-              }
-            } catch (e) {
-              rej(e);
-            }
-          }
-        }
-        catch (e) {
-          rej(e);
-        }
-      });
+      return convert(await getIDBValue(dbName, storeName, key, valuePath), targetType, options);
     }
     case "local": {
       break;
@@ -251,145 +222,162 @@ export async function serialize(value: any, location: WriteLocation, options: Co
       if (valuePath == null) {
         throw "valuePath must not be null";
       }
-      return await new Promise((res, rej) => {
-        try {
-          const openRequest = version == null ? indexedDB.open(dbName) : indexedDB.open(dbName, version);
-          openRequest.onerror = () => {
-            rej(`Failed to open IDB "${dbName}"`);
-          }
-          openRequest.onsuccess = () => {
-            try {
-              const db = openRequest.result;
-              const transaction = db.transaction([storeName], "readwrite");
-              const store = transaction.objectStore(storeName);
-
-              const getRequest = store.get(key);
-              getRequest.onsuccess = () => {
-                let { result } = getRequest
-                if (result == null) {
-                  result = {};
-                  setAttributeAtPath(result, keyPath, key);
-                }
-                setAttributeAtPath(result, valuePath, value);
-                const putRequest = store.put(result);
-                putRequest.onsuccess = () => {
-                  res(location);
-                }
-                putRequest.onerror = () => {
-                  rej("failed to write to IDB store");
-                }
-              }
-              getRequest.onerror = () => {
-                rej("failed to access IDB store");
-              }
-            } catch (e) {
-              rej(e);
-            }
-          };
-          openRequest.onupgradeneeded = () => {
-            const db = openRequest.result;
-            const transaction = openRequest.transaction!;
-            let store: IDBObjectStore;
-            if (!db.objectStoreNames.contains(storeName)) {
-              store = db.createObjectStore(storeName, { keyPath });
-            } else {
-              store = transaction.objectStore(storeName);
-              if (store.keyPath !== keyPath) {
-                db.deleteObjectStore(storeName);
-                store = db.createObjectStore(storeName, { keyPath });
-              }
-            }
-          }
-        } catch (e) {
-          rej(e);
-        }
-      });
+      return await putIDBValue(dbName, storeName, key, valuePath, value, keyPath, version);
     }
   }
 }
 
-/**
- * Convenience Promise wrapper for {@link IDBRequest}.
- */
-export function requestPromise(request: IDBRequest, onupgradeneeded?: (db: IDBDatabase) => any) {
-  return new Promise((res, rej) => {
-    request.onerror = () => {
-      rej();
-    }
-    request.onsuccess = () => {
-      res(request.result);
-    }
-    if (onupgradeneeded) {
-      (request as IDBOpenDBRequest).onupgradeneeded = () => {
-        try {
-          onupgradeneeded(request.result as IDBDatabase);
-          res(request.result as IDBDatabase);
-        } catch (e) {
-          rej(e);
-        }
-      };
-    }
-  });
-}
-
-export async function getIDBTransaction(
+export function initIDBStores(
   dbName: string,
-  storeName: string,
-  mode: "readonly" | "readwrite",
+  stores: { name: string; keyPath: string; }[],
+  version?: number,
 ) {
-  const db = await requestPromise(indexedDB.open(dbName)) as IDBDatabase;
-  return db.transaction([storeName], mode);
+  const populateStores = (db: IDBDatabase) => {
+    for (const { name, keyPath } of stores) {
+      if (db.objectStoreNames.contains(name)) {
+        db.deleteObjectStore(name);
+      }
+      db.createObjectStore(name, { keyPath });
+    }
+  };
+
+  if (version === undefined) {
+    let currentVersion = 0;
+    return idbDatabase(dbName, version, populateStores).then(db => {
+      try {
+        currentVersion = db.version;
+        const transaction = db.transaction(
+          stores.map(({ name }) => name),
+          "readonly",
+        );
+        for (const { name, keyPath } of stores) {
+          const store = transaction.objectStore(name);
+          if (store.keyPath !== keyPath) {
+            throw 1;
+          }
+        }
+        return SyncChain.resolve(db);
+      } catch (error) {
+        db.close();
+        return idbDatabase(dbName, currentVersion + 1, populateStores);
+      }
+    }).then(db => db.close()).promise;
+  }
+  return idbDatabase(dbName, version, populateStores)
+    .then(db => db.close());
 }
 
-export async function getIDBValue(
+export function clearIDBStore(
+  dbName: string,
+  storeNames: string[],
+) {
+  return idbDatabase(dbName).then(db => {
+    try {
+      const [transaction, committed] = idbTransaction(db, storeNames, "readwrite");
+      const clear = SyncChain.all(storeNames.map(storeName => {
+        return requestChain(transaction.objectStore(storeName).clear());
+      }));
+      return SyncChain.all([clear, committed]).finally(() => db.close());
+    } catch (error) {
+      db.close();
+      throw error;
+    }
+  }).promise;
+}
+
+export function getIDBValue(
   dbName: string,
   storeName: string,
   key: string,
   valuePath?: string,
-): Promise<any> {
-  const transaction = await getIDBTransaction(dbName, storeName, "readonly")
-  const value = await requestPromise(transaction.objectStore(storeName).get(key));
-  if (value != null) {
-    return getAttributeAtPath(value, valuePath);
-  }
-  return undefined;
+) {
+  return idbDatabase(dbName).then(db => {
+    try {
+      const [transaction] = idbTransaction(db, [storeName]);
+      const store = transaction.objectStore(storeName);
+      return requestChain(store.get(key))
+        .then(value => {
+          if (value != null) {
+            return getAttributeAtPath(value, valuePath)
+          } else {
+            return undefined;
+          }
+        })
+        .finally(() => {
+          db.close();
+        })
+    } catch (error) {
+      db.close();
+      throw error;
+    }
+  }).promise;
 }
 
-export async function putIDBValue(
+export function setIDBValue(
   dbName: string,
   storeName: string,
-  keyPath: string | undefined,
   key: string,
   valuePath: string | undefined,
   value: any,
+  overwrite: boolean = true,
+  keyPath?: string,
+  version?: number,
 ) {
-  const transaction = await getIDBTransaction(dbName, storeName, "readwrite")
-  const store = transaction.objectStore(storeName);
-  let currentValue = await requestPromise(store.get(key)) as any;
-  if (currentValue == null) {
-    currentValue = setAttributeAtPath({}, keyPath, key);
-  }
-  setAttributeAtPath(currentValue as Object, valuePath, value);
-  await requestPromise(store.put(currentValue));
+  return idbDatabase(dbName, version, db => {
+    if (keyPath === undefined) {
+      throw new Error(`keyPath is missing when upgrading IDB "${dbName}.${storeName}" to version ${version}`);
+    }
+    if (db.objectStoreNames.contains(storeName)) {
+      db.deleteObjectStore(storeName);
+    }
+    db.createObjectStore(storeName, {
+      keyPath
+    })
+  }).then(db => {
+    try {
+      const [transaction, committed] = idbTransaction(db, [storeName], "readwrite");
+      const store = transaction.objectStore(storeName);
+      return requestChain(store.get(key)).then(currentValue => {
+        if (currentValue == null) {
+          const keyPath = store.keyPath;
+          if (typeof keyPath !== "string") {
+            throw new Error("putIDBValue -- keyPath is not string")
+          }
+          currentValue = setAttributeAtPath({}, keyPath, key);
+        } else if (!overwrite && getAttributeAtPath(currentValue, valuePath) !== undefined) {
+          throw new DOMException("value already exists", "DataError");
+        }
+        currentValue = setAttributeAtPath(currentValue as Object, valuePath, value);
+        return SyncChain.all([requestChain(store.put(currentValue)), committed]);
+      }).finally(() => db.close());
+    } catch (error) {
+      db.close();
+      throw error;
+    }
+  }).then(() => { }).promise;
 }
 
-export async function addIDBValue(
+export function putIDBValue(
   dbName: string,
   storeName: string,
-  keyPath: string | undefined,
   key: string,
   valuePath: string | undefined,
   value: any,
+  keyPath?: string,
+  version?: number,
 ) {
-  const transaction = await getIDBTransaction(dbName, storeName, "readwrite")
-  const store = transaction.objectStore(storeName);
-  let currentValue = await requestPromise(store.get(key)) as any;
-  if (currentValue == null) {
-    currentValue = setAttributeAtPath({}, keyPath, key);
-  } else if (getAttributeAtPath(currentValue, valuePath) !== undefined) {
-    throw new DOMException("value already exists", "DataError");
-  }
-  setAttributeAtPath(currentValue as Object, valuePath, value);
-  await requestPromise(store.put(currentValue));
+  return setIDBValue(dbName, storeName, key, valuePath, value, true, keyPath, version);
+}
+
+export function addIDBValue(
+  dbName: string,
+  storeName: string,
+  key: string,
+  valuePath: string | undefined,
+  value: any,
+  keyPath?: string,
+  version?: number,
+) {
+  return setIDBValue(dbName, storeName, key, valuePath, value, false, keyPath, version);
 }
 

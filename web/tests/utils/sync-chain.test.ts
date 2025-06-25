@@ -94,14 +94,14 @@ describe("SyncChain", () => {
           )
         ));
       });
-      expect(await p.promise()).toBe(1);
+      expect(await p.promise).toBe(1);
     });
 
     it("flattens a rejected value that is a Promise", async () => {
       const p = SyncChain.eager<number>((_, rej) => {
         rej(Promise.resolve("error"));
       });
-      await expect(p.promise()).rejects.toThrow("error");
+      await expect(p.promise).rejects.toThrow("error");
     });
   });
 
@@ -112,20 +112,29 @@ describe("SyncChain", () => {
         ++l;
         res(l);
       });
-      expect(p.isExecuted).toBe(false);
+      expect(p.hasStarted).toBe(false);
       p.run();
-      expect(p.isExecuted).toBe(true);
+      expect(p.hasStarted).toBe(true);
       expect(l).toBe(1);
       p.run();
-      expect(p.isExecuted).toBe(true);
+      expect(p.hasStarted).toBe(true);
       expect(l).toBe(1);
     })
   });
 
   describe(".resolve", () => {
     it("resolves with the given value", () => {
-      const p = SyncChain.resolve("Hello!");
-      expect(p.run().value).toBe("Hello!");
+      expect(SyncChain.resolve(undefined).value).toBe(undefined);
+      expect(SyncChain.resolve(null).value).toBe(null);
+      expect(SyncChain.resolve(1).value).toBe(1);
+      expect(SyncChain.resolve(0).value).toBe(0);
+      expect(SyncChain.resolve(-0).value).toBe(-0);
+      expect(SyncChain.resolve(Infinity).value).toBe(Infinity);
+      expect(SyncChain.resolve(-Infinity).value).toBe(-Infinity);
+      expect(SyncChain.resolve(NaN).value).toBe(NaN);
+      expect(SyncChain.resolve(-NaN).value).toBe(-NaN);
+      expect(SyncChain.resolve("").value).toBe("");
+      expect(SyncChain.resolve("Hello").value).toBe("Hello");
     })
 
     it("flattens a nested SyncChain", () => {
@@ -154,14 +163,14 @@ describe("SyncChain", () => {
           Promise.resolve(1)
         )
       );
-      expect(await p.run().promise()).toBe(1);
+      expect(await p.run().promise).toBe(1);
     });
 
     it("rejects a Promise that rejects", async () => {
       const p = SyncChain.resolve(
         Promise.reject("one")
       );
-      await expect(p.run().promise()).rejects.toThrow("one");
+      await expect(p.run().promise).rejects.toThrow("one");
     });
   });
 
@@ -202,12 +211,12 @@ describe("SyncChain", () => {
       const p = SyncChain.reject(
         Promise.resolve("one")
       );
-      await expect(p.run().promise()).rejects.toThrow("one");
+      await expect(p.run().promise).rejects.toThrow("one");
 
       const q = SyncChain.reject(
         Promise.reject("two")
       );
-      await expect(q.run().promise()).rejects.toThrow("two");
+      await expect(q.run().promise).rejects.toThrow("two");
     });
   });
 
@@ -220,9 +229,9 @@ describe("SyncChain", () => {
 
     it("returns undefined if the SyncChain is not settled", () => {
       const p = SyncChain.lazy(() => { });
-      expect(p.isExecuted).toBe(false);
+      expect(p.hasStarted).toBe(false);
       p.run();
-      expect(p.isExecuted).toBe(true);
+      expect(p.hasStarted).toBe(true);
       expect(p.isSettled).toBe(false);
       expect(p.isFulfilled).toBe(false);
       expect(p.isRejected).toBe(false);
@@ -297,7 +306,7 @@ describe("SyncChain", () => {
         })
         .then(x => Promise.reject((x as any) * 3))
         .catch(x => x + 4);
-      expect(await p.run().promise()).toBe(13);
+      expect(await p.run().promise).toBe(13);
     });
 
     it("can be called multiple times on the same SyncChain", () => {
@@ -461,16 +470,16 @@ describe("SyncChain", () => {
   describe(".wait", () => {
     it("returns a Promise that blocks until the SyncChain is settled", async () => {
       const { resolve, promise: p } = SyncChain.withResolvers();
-      expect(p.isExecuted).toBe(true);
+      expect(p.hasStarted).toBe(true);
       expect(p.isSettled).toBe(false);
       setTimeout(() => { resolve(123); }, 50);
-      expect(await p.promise()).toBe(123);
+      expect(await p.promise).toBe(123);
 
       const { reject, promise: q } = SyncChain.withResolvers();
-      expect(q.isExecuted).toBe(true);
+      expect(q.hasStarted).toBe(true);
       expect(q.isSettled).toBe(false);
       setTimeout(() => reject("err"), 50);
-      await expect(q.promise()).rejects.toThrow("err");
+      await expect(q.promise).rejects.toThrow("err");
     });
   });
 
@@ -511,7 +520,7 @@ describe("SyncChain", () => {
   describe(".withResolvers", () => {
     it("can resolve", () => {
       const { resolve, promise: p } = SyncChain.withResolvers();
-      expect(p.isExecuted).toBe(true);
+      expect(p.hasStarted).toBe(true);
       expect(p.isSettled).toBe(false);
       resolve("a");
       expect(p.isSettled).toBe(true);
@@ -520,7 +529,7 @@ describe("SyncChain", () => {
 
     it("can reject", () => {
       const { reject, promise: p } = SyncChain.withResolvers();
-      expect(p.isExecuted).toBe(true);
+      expect(p.hasStarted).toBe(true);
       expect(p.isSettled).toBe(false);
       reject("b");
       expect(p.isSettled).toBe(true);
@@ -694,7 +703,7 @@ describe("SyncChain", () => {
 
   describe("await", () => {
     it("works with an executed SyncChain", async () => {
-      expect(await SyncChain.resolve(1).promise()).toBe(1);
+      expect(await SyncChain.resolve(1).promise).toBe(1);
     });
   })
 })

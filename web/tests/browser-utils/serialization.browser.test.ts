@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest"; // Import Vitest functions
-import { addIDBValue, deserialize, getIDBTransaction, getIDBValue, IDBLocation, OpfsLocation, putIDBValue, requestPromise, serialize } from "../../src/browser-utils/serialization";
+import { addIDBValue, deserialize, getIDBValue, IDBLocation, OpfsLocation, setIDBValue, serialize, initIDBStores, clearIDBStore } from "../../src/browser-utils/serialization";
 import { DataType } from "../../src/utils/serialization";
 
 describe("IndexedDB convenience functions", () => {
@@ -14,9 +14,9 @@ describe("IndexedDB convenience functions", () => {
       get: (key: string, valuePath?: string) =>
         getIDBValue(dbName, storeName, key, valuePath),
       put: (key: string, valuePath: string | undefined, value: any) =>
-        putIDBValue(dbName, storeName, keyPath, key, valuePath, value),
+        setIDBValue(dbName, storeName, key, valuePath, value),
       add: (key: string, valuePath: string | undefined, value: any) =>
-        addIDBValue(dbName, storeName, keyPath, key, valuePath, value),
+        addIDBValue(dbName, storeName, key, valuePath, value),
     };
   }
 
@@ -24,14 +24,24 @@ describe("IndexedDB convenience functions", () => {
   const { get: get2, put: put2, add: add2 } = storeFunctions(dbName, storeName2, keyPath2);
 
   beforeAll(async () => {
-    await requestPromise(indexedDB.open(dbName, 1), (db) => {
-      db.createObjectStore(storeName1, { keyPath: keyPath1 });
-      db.createObjectStore(storeName2, { keyPath: keyPath2 });
-    });
-  })
+    await initIDBStores(dbName, [
+      {
+        name: storeName1,
+        keyPath: keyPath1,
+      },
+      {
+        name: storeName2,
+        keyPath: keyPath2,
+      },
+      {
+        name: "xxx",
+        keyPath: "yyy",
+      },
+    ]);
+  }, 3000)
 
   afterAll(async () => {
-    await requestPromise(indexedDB.deleteDatabase(dbName));
+    await clearIDBStore(dbName, [storeName1, storeName2]);
   })
 
   it("get should return undefined when non-existing value is retrieved", async () => {
@@ -153,48 +163,51 @@ describe("IndexedDB serialization", () => {
   }
 
   beforeAll(async () => {
-    await requestPromise(indexedDB.open(dbName, 1), (db) => {
-      db.createObjectStore(storeName, { keyPath });
-    });
+    await initIDBStores(dbName, [
+      {
+        name: storeName,
+        keyPath,
+      }
+    ]);
   })
 
   afterAll(async () => {
-    const transaction = await getIDBTransaction(dbName, storeName, "readwrite");
-    const store = transaction.objectStore(storeName);
-    await requestPromise(store.clear());
+    await clearIDBStore(dbName, [storeName]);
   })
 
-  it("should write data to IndexedDB", async () => {
-    const pairs: [string, any][] = [
-      ["string:greeting", "Hello, world!"],
-      ["string:question", "How are you?"],
-      ["string:empty", ""],
-      ["boolean:false", false],
-      ["boolean:true", true],
-      ["number:0", 0],
-      ["number:1", 1],
-      ["number:-1", -1],
-      ["number:NaN", NaN],
-      ["number:-NaN", -NaN],
-      ["number:Infinity", Infinity],
-      ["number:-0", -0],
-      ["number:-Infinity", -Infinity],
-      ["object:null", null],
-      ["object:array", [1, 2, 3]],
-      ["object:nestedInArray", [1, [2, 3], { "d": 4, "e": [5, 6] }]],
-      ["object:nestedObject", { "a": 1, "b": { "c": [3, 4, 5], "d": null } }],
-      ["arraybuffer:empty", new ArrayBuffer(0)],
-      ["arraybuffer:10bytes", (new Uint16Array([1, 2, 3, 4, 5])).buffer],
-      ["blob:empty", new Blob([])],
-      ["blob:10bytes", new Blob([(new Uint16Array([1, 2, 3, 4, 5])).buffer])],
-    ];
+  describe("serialize and deserialize", () => {
+    it("are inverses of each other", async () => {
+      const pairs: [string, any][] = [
+        ["string:greeting", "Hello, world!"],
+        ["string:question", "How are you?"],
+        ["string:empty", ""],
+        ["boolean:false", false],
+        ["boolean:true", true],
+        ["number:0", 0],
+        ["number:1", 1],
+        ["number:-1", -1],
+        ["number:NaN", NaN],
+        ["number:-NaN", -NaN],
+        ["number:Infinity", Infinity],
+        ["number:-0", -0],
+        ["number:-Infinity", -Infinity],
+        ["object:null", null],
+        ["object:array", [1, 2, 3]],
+        ["object:nestedInArray", [1, [2, 3], { "d": 4, "e": [5, 6] }]],
+        ["object:nestedObject", { "a": 1, "b": { "c": [3, 4, 5], "d": null } }],
+        ["arraybuffer:empty", new ArrayBuffer(0)],
+        ["arraybuffer:10bytes", (new Uint16Array([1, 2, 3, 4, 5])).buffer],
+        ["blob:empty", new Blob([])],
+        ["blob:10bytes", new Blob([(new Uint16Array([1, 2, 3, 4, 5])).buffer])],
+      ];
 
-    for (const [key, value] of pairs) {
-      const location = { ...location0, key };
-      const type = key.split(":", 1)[0];
-      await serialize(value, location);
-      await expectEqual(await deserialize(location, type as DataType), value);
-    }
+      for (const [key, value] of pairs) {
+        const location = { ...location0, key };
+        const type = key.split(":", 1)[0];
+        await serialize(value, location);
+        expectEqual(await deserialize(location, type as DataType), value);
+      }
+    })
   })
 })
 
@@ -205,38 +218,40 @@ describe("OPFS serialization", () => {
     path: [],
   }
 
-  it("should write data to OPFS", async () => {
-    const pairs: [string, any][] = [
-      ["string:greeting", "Hello, world!"],
-      ["string:question", "How are you?"],
-      ["string:empty", ""],
-      ["boolean:false", false],
-      ["boolean:true", true],
-      ["number:0", 0],
-      ["number:1", 1],
-      ["number:-1", -1],
-      ["number:NaN", NaN],
-      ["number:-NaN", -NaN],
-      ["number:Infinity", Infinity],
-      ["number:-0", -0],
-      ["number:-Infinity", -Infinity],
-      ["object:null", null],
-      ["object:array", [1, 2, 3]],
-      ["object:nestedInArray", [1, [2, 3], { "d": 4, "e": [5, 6] }]],
-      ["object:nestedObject", { "a": 1, "b": { "c": [3, 4, 5], "d": null } }],
-      ["arraybuffer:empty", new ArrayBuffer(0)],
-      ["arraybuffer:10bytes", (new Uint16Array([1, 2, 3, 4, 5])).buffer],
-      //      ["blob:empty", new Blob([])],
-      ["blob:10bytes", new Blob([(new Uint16Array([1, 2, 3, 4, 5])).buffer])],
-    ];
+  describe("serialize and deserialize", () => {
+    it("are inverses of each other", async () => {
+      const pairs: [string, any][] = [
+        ["string:greeting", "Hello, world!"],
+        ["string:question", "How are you?"],
+        ["string:empty", ""],
+        ["boolean:false", false],
+        ["boolean:true", true],
+        ["number:0", 0],
+        ["number:1", 1],
+        ["number:-1", -1],
+        ["number:NaN", NaN],
+        ["number:-NaN", -NaN],
+        ["number:Infinity", Infinity],
+        ["number:-0", -0],
+        ["number:-Infinity", -Infinity],
+        ["object:null", null],
+        ["object:array", [1, 2, 3]],
+        ["object:nestedInArray", [1, [2, 3], { "d": 4, "e": [5, 6] }]],
+        ["object:nestedObject", { "a": 1, "b": { "c": [3, 4, 5], "d": null } }],
+        ["arraybuffer:empty", new ArrayBuffer(0)],
+        ["arraybuffer:10bytes", (new Uint16Array([1, 2, 3, 4, 5])).buffer],
+        ["blob:empty", new Blob([])],
+        ["blob:10bytes", new Blob([(new Uint16Array([1, 2, 3, 4, 5])).buffer])],
+      ];
 
-    for (const [key, value] of pairs) {
-      const path = [baseDir, ...key.split(":")];
-      const type = path[1];
-      const location = { ...location0, path };
-      await serialize(value, location);
-      await expectEqual(await deserialize(location, type as DataType), value);
-    }
+      for (const [key, value] of pairs) {
+        const path = [baseDir, ...key.split(":")];
+        const type = path[1];
+        const location = { ...location0, path };
+        await serialize(value, location);
+        expectEqual(await deserialize(location, type as DataType), value);
+      }
+    })
   })
 })
 

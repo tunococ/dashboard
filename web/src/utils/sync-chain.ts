@@ -50,8 +50,8 @@ export class SyncChain<T = any> implements PromiseLike<T> {
 
   private resolved: (T | undefined)[] = [];
   private rejected: any[] = [];
-  private resolving: (T | PromiseLike<T> | undefined)[] = [];
-  private rejecting: (T | PromiseLike<any> | undefined)[] = [];
+  private resolving: (T | PromiseLike<T> | undefined | Object)[] = [];
+  private rejecting: any[] = [];
   private settled: boolean = false;
 
   private _doResolve = (value?: T) => {
@@ -59,7 +59,9 @@ export class SyncChain<T = any> implements PromiseLike<T> {
     this.rejecting = [];
     this.resolved = [value];
     this.settled = true;
-    this.notifyListeners(true);
+    if (this.hasFinished) {
+      this.notifyListeners();
+    }
   }
 
   private _doReject = (error?: T) => {
@@ -67,7 +69,9 @@ export class SyncChain<T = any> implements PromiseLike<T> {
     this.rejecting = [error];
     this.rejected = [error];
     this.settled = true;
-    this.notifyListeners(false);
+    if (this.hasFinished) {
+      this.notifyListeners();
+    }
   }
 
   private _resolve = (value?: T | PromiseLike<any>) => {
@@ -77,7 +81,8 @@ export class SyncChain<T = any> implements PromiseLike<T> {
     if (this.resolving.length === 0 && this.rejecting.length === 0) {
       this.resolving.push(value);
     }
-    if (this.resolving[0] === value) {
+    if (Object.is(this.resolving[0], value)) {
+      this.resolving[0] = {};
       if (isPromiseLike(value)) {
         if (value instanceof SyncChain) {
           value.run();
@@ -102,7 +107,8 @@ export class SyncChain<T = any> implements PromiseLike<T> {
     if (this.resolving.length === 0 && this.rejecting.length === 0) {
       this.rejecting.push(error);
     }
-    if (this.rejecting[0] === error) {
+    if (Object.is(this.rejecting[0], error)) {
+      this.rejecting[0] = {};
       if (isPromiseLike(error)) {
         if (error instanceof SyncChain) {
           error.run();
@@ -121,6 +127,7 @@ export class SyncChain<T = any> implements PromiseLike<T> {
   }
 
   private started: boolean = false;
+  private finished: boolean = false;
   run() {
     if (!this.started) {
       this.started = true;
@@ -132,12 +139,18 @@ export class SyncChain<T = any> implements PromiseLike<T> {
       } catch (error) {
         this._reject(error);
       }
+      this.finished = true;
+      this.notifyListeners();
     }
     return this;
   }
 
-  get isExecuted() {
+  get hasStarted() {
     return this.started;
+  }
+
+  get hasFinished() {
+    return this.finished;
   }
 
   get isSettled() {
@@ -196,11 +209,19 @@ export class SyncChain<T = any> implements PromiseLike<T> {
 
   then<V>(
     onResolved: undefined,
+    onRejected: (error: any) => PromiseLike<V>,
+  ): SyncChain<V>;
+  then<V>(
+    onResolved: undefined,
     onRejected: (error: any) => V,
   ): SyncChain<V>;
   then<U>(
     onResolved: (value: T) => PromiseLike<U>,
   ): SyncChain<U>;
+  then<U, V = U>(
+    onResolved: (value: T) => PromiseLike<U>,
+    onRejected: (error: any) => PromiseLike<V>,
+  ): SyncChain<U | V>;
   then<U, V = U>(
     onResolved: (value: T) => PromiseLike<U>,
     onRejected: (error: any) => V,
@@ -377,8 +398,8 @@ export class SyncChain<T = any> implements PromiseLike<T> {
     this._onrejected = listener;
   }
 
-  private notifyListeners(resolved: boolean) {
-    if (resolved) {
+  private notifyListeners() {
+    if (this.isFulfilled) {
       for (const listener of this._onFulfilledListeners) {
         listener(this.value);
       }
@@ -391,11 +412,16 @@ export class SyncChain<T = any> implements PromiseLike<T> {
     this._onRejectedListeners = [];
   }
 
-  promise() {
-    return new Promise((res, rej) => {
-      this.addEventListener("fulfilled", res);
-      this.addEventListener("rejected", rej);
-    });
+  private _promise: Promise<T> | undefined = undefined;
+
+  get promise() {
+    if (!this._promise) {
+      this._promise = new Promise((res, rej) => {
+        this.addEventListener("fulfilled", res);
+        this.addEventListener("rejected", rej);
+      });
+    }
+    return this._promise;
   }
 
   static withResolvers<T = any>() {
@@ -406,8 +432,8 @@ export class SyncChain<T = any> implements PromiseLike<T> {
     });
     return {
       promise,
-      reject,
-      resolve,
+      reject: reject!,
+      resolve: resolve!,
     }
   }
 
@@ -538,6 +564,6 @@ export class SyncChain<T = any> implements PromiseLike<T> {
 }
 
 function isPromiseLike<T = any>(x: any): x is PromiseLike<T> {
-  return (typeof x === "object" || typeof x === "function") && typeof x.then === "function";
+  return (typeof x === "object" || typeof x === "function") && (typeof x?.then === "function");
 };
 
