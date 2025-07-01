@@ -9,8 +9,8 @@ export default mergeConfig(
       coverage: {
         enabled: true,
         include: [
-          "src/utils/**/*.ts",
-          "src/browser-utils/**/*.ts",
+          "src/utils/**/*",
+          "src/browser-utils/**/*",
         ],
         reporter: [
           "text-summary",

@@ -1,8 +1,5 @@
-import {
-  type Point2D,
-  cross,
-  transformFromScreenCoordinates,
-} from "../utils/geometry-2d.ts";
+import { transformFromScreenCoordinates } from "../browser-utils/positioning.ts";
+import { type Point2D, cross } from "../utils/geometry-2d.ts";
 
 export interface ResizerConfig {
   resizable: boolean;
@@ -58,7 +55,6 @@ export type ResizeEventType =
   | "resized";
 
 export class ResizeEvent extends Event implements ResizeEventDetail {
-  type: ResizeEventType;
   resizeDirection: number;
   maintainAspectRatio: boolean;
   aspectRatio: number;
@@ -74,7 +70,6 @@ export class ResizeEvent extends Event implements ResizeEventDetail {
     options: Partial<ResizeEventDetail> & { resizer: Resizer },
   ) {
     super(type); // This event does not bubble.
-    this.type = type;
     this.resizeDirection = options.resizeDirection ?? -1;
     this.maintainAspectRatio = options.maintainAspectRatio ?? false;
     this.aspectRatio = options.aspectRatio ?? 1;
@@ -321,7 +316,7 @@ export class Resizer implements ResizerConfig {
       for (const resizeControl of resizeControls) {
         try {
           element.removeChild(resizeControl);
-        } catch (_e) { }
+        } catch (_e) {}
       }
     };
 
@@ -427,9 +422,9 @@ export class Resizer implements ResizerConfig {
 
   findSizeForAspectRatio(strategy: AspectRatioFitStrategy):
     | {
-      width: number;
-      height: number;
-    }
+        width: number;
+        height: number;
+      }
     | undefined {
     if (!this._element || !(this.aspectRatio > 0)) {
       return undefined;
@@ -776,12 +771,12 @@ export class Resizer implements ResizerConfig {
           } else {
             targetWidth = Math.min(
               this.resizingInitialWidth +
-              displacement.x * this.resizingWidthDirection,
+                displacement.x * this.resizingWidthDirection,
               expandLimitWidth,
             );
             targetHeight = Math.min(
               this.resizingInitialHeight +
-              displacement.y * this.resizingHeightDirection,
+                displacement.y * this.resizingHeightDirection,
               expandLimitHeight,
             );
           }

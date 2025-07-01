@@ -76,29 +76,3 @@ export function centroid(points: Iterable<Point2D>): Point2D {
   }
   return i === 0 ? { x: 0, y: 0 } : { x: sumX / i, y: sumY / i };
 }
-
-export function transformFromScreenCoordinates(
-  element: Element,
-  x: number,
-  y: number,
-): Point2D {
-  let e: Element | null = element;
-  let m: DOMMatrixReadOnly = new DOMMatrixReadOnly();
-  while (e) {
-    m = new DOMMatrixReadOnly(getComputedStyle(e).transform).multiply(m);
-    if (e.assignedSlot) {
-      e = e.assignedSlot;
-    } else if (e.parentElement) {
-      e = e.parentElement;
-    } else {
-      const rootNode = e.getRootNode() as ShadowRoot;
-      if ((e as Node) !== rootNode && rootNode.host && e !== rootNode.host) {
-        e = rootNode.host;
-      } else {
-        e = null;
-      }
-    }
-  }
-  const point = new DOMPointReadOnly(x, y).matrixTransform(m.inverse());
-  return { x: point.x, y: point.y };
-}

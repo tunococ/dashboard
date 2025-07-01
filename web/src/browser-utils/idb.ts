@@ -1,6 +1,9 @@
 import { SyncChain } from "../utils/sync-chain";
 
-export function requestChain(request: IDBOpenDBRequest, onupgradeneeded?: (db: IDBDatabase) => void): SyncChain<IDBDatabase>;
+export function requestChain(
+  request: IDBOpenDBRequest,
+  onupgradeneeded?: (db: IDBDatabase) => void,
+): SyncChain<IDBDatabase>;
 export function requestChain(request: IDBRequest): SyncChain<any>;
 export function requestChain(
   request: IDBRequest,
@@ -16,9 +19,9 @@ export function requestChain(
     if (onupgradeneeded) {
       (request as IDBOpenDBRequest).onupgradeneeded = () => {
         onupgradeneeded(request.result as IDBDatabase);
-      }
+      };
     }
-  })
+  });
 }
 
 export function idbDatabase(
@@ -41,4 +44,3 @@ export function idbTransaction(
   transaction.onerror = (event: Event) => reject(event);
   return [transaction, committed!];
 }
-

@@ -1,4 +1,11 @@
-export type DataType = "arraybuffer" | "blob" | "boolean" | "number" | "string" | "object" | "default";
+export type DataType =
+  | "arraybuffer"
+  | "blob"
+  | "boolean"
+  | "number"
+  | "string"
+  | "object"
+  | "default";
 
 export type ConversionOptions = {
   mimeType?: string;
@@ -45,7 +52,7 @@ export function convert(
         const array = new Uint8Array([value ? 1 : 0]);
         return array.buffer;
       }
-      throw `Cannot convert ${typeof value} to ArrayBuffer`;
+      throw `failed to convert ${typeof value} to ArrayBuffer`;
     }
     case "boolean": {
       if (value instanceof ArrayBuffer) {
@@ -71,7 +78,7 @@ export function convert(
       if (typeof value === "boolean") {
         return value ? 1 : 0;
       }
-      throw `Cannot convert ${typeof value} to number`;
+      throw `failed to convert ${typeof value} to number`;
     }
     case "string": {
       if (typeof value === "number") {
@@ -93,7 +100,7 @@ export function convert(
       if (typeof value === "boolean") {
         return value ? "true" : "false";
       }
-      throw `Cannot convert ${typeof value} to string`;
+      throw `failed to convert ${typeof value} to string`;
     }
     case "object": {
       if (value instanceof ArrayBuffer) {
@@ -105,7 +112,7 @@ export function convert(
       if (typeof value === "string") {
         return JSON.parse(value);
       }
-      throw `Cannot convert ${typeof value} to object`;
+      throw `failed to convert ${typeof value} to object`;
     }
     case "blob": {
       if (value instanceof Blob) {
@@ -118,7 +125,7 @@ export function convert(
         try {
           value = convert(value, "arraybuffer", options);
         } catch (e) {
-          throw `Cannot convert ${typeof value} to Blob`;
+          throw `failed to convert ${typeof value} to Blob`;
         }
       }
       return new Blob([value], { type: mimeType });
@@ -145,41 +152,65 @@ export function makeObjectURL(value: any, mimeType?: string) {
  * The return value is a string that can be used in other HTML elements such as
  * `<iframe>`, `<img>`, `<audio>`, `<video>`.
  */
-export function makeDataURL(
-  value: any,
-  mimeType?: string,
-): Promise<string> {
+export function makeDataURL(value: any, mimeType?: string): Promise<string> {
   const blob = convert(value, "blob", { mimeType });
   return new Promise((res, rej) => {
     const reader = new FileReader();
     reader.onload = () => {
       res(reader.result as string);
-    }
+    };
     reader.onerror = () => {
-      rej("Failed to convert to data URL");
-    }
+      rej(reader.error ?? "failed to convert to data URL");
+    };
     reader.onabort = () => {
-      rej("Conversion to data URL aborted");
-    }
+      rej("conversion to data URL aborted");
+    };
     reader.readAsDataURL(blob);
   });
 }
 
-function parseAttributePath(path: string | undefined) {
+function parseAttributePath(path: string | null | undefined) {
   if (path == null) {
     return [];
   }
   return path.split(".");
 }
 
-export function getAttributeAtPath(value: Record<string, any>, path: string | undefined): any {
+export function hasAttributeAtPath(
+  value: Record<string, any> | null | undefined,
+  path: string | null | undefined,
+) {
+  const attrNames = parseAttributePath(path);
+  if (attrNames.length === 0) {
+    return !!value;
+  }
+  if (!value) {
+    return false;
+  }
+  let currentValue = value;
+  for (const attrName of attrNames) {
+    if (currentValue == null || !(attrName in currentValue)) {
+      return false;
+    }
+    currentValue = currentValue[attrName];
+  }
+  return true;
+}
+
+export function getAttributeAtPath(
+  value: Record<string, any> | null | undefined,
+  path: string | null | undefined,
+): any {
   const attrNames = parseAttributePath(path);
   if (attrNames.length === 0) {
     return value;
   }
+  if (!value) {
+    return undefined;
+  }
   let currentValue = value;
   for (const attrName of attrNames) {
-    if (currentValue == undefined) {
+    if (currentValue == null) {
       break;
     }
     currentValue = currentValue[attrName];
@@ -187,14 +218,12 @@ export function getAttributeAtPath(value: Record<string, any>, path: string | un
   return currentValue;
 }
 
-export function setAttributeAtPath(value: Record<string, any>, path: string | undefined, attrValue: any) {
+export function setAttributeAtPath(
+  value: Record<string, any>,
+  path: string,
+  attrValue: any,
+) {
   const attrNames = parseAttributePath(path);
-  if (attrNames.length === 0) {
-    throw "attribute path must not be empty";
-  }
-  if (!value) {
-    throw "value must not be empty";
-  }
   let currentValue = value;
   let i = 0;
   for (; i < attrNames.length - 1; ++i) {
@@ -208,3 +237,20 @@ export function setAttributeAtPath(value: Record<string, any>, path: string | un
   return value;
 }
 
+export function deleteAttributeAtPath(
+  value: Record<string, any>,
+  path: string,
+) {
+  const attrNames = parseAttributePath(path);
+  let currentValue = value;
+  let i = 0;
+  for (; i < attrNames.length - 1; ++i) {
+    const attrName = attrNames[i];
+    if (!(attrName in currentValue)) {
+      return value;
+    }
+    currentValue = currentValue[attrName];
+  }
+  delete currentValue[attrNames[i]];
+  return value;
+}

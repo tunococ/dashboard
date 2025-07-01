@@ -1,7 +1,5 @@
-import {
-  type Point2D,
-  transformFromScreenCoordinates,
-} from "../utils/geometry-2d";
+import { transformFromScreenCoordinates } from "../browser-utils/positioning";
+import type { Point2D } from "../utils/geometry-2d";
 
 export interface MoveEventDetail {
   initialX: number;

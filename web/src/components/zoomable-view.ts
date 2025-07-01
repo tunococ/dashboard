@@ -1,5 +1,5 @@
-import { centroid, dist, transformFromScreenCoordinates } from "../utils/geometry-2d";
-
+import { transformFromScreenCoordinates } from "../browser-utils/positioning";
+import { centroid, dist } from "../utils/geometry-2d";
 
 const defaultAttributes: Record<string, any> = {
   "zoom-speed": 0.002,
@@ -36,7 +36,6 @@ export type Point2D = { x: number; y: number };
  * ```
  */
 export class ZoomableView extends HTMLElement {
-
   /**
    * The tag name that has been registered for this component.
    */
@@ -66,10 +65,8 @@ export class ZoomableView extends HTMLElement {
     if (!ZoomableView.tagName) {
       customElements.define(tagName, ZoomableView);
       ZoomableView.tagName = tagName;
-      return tagName;
-    } else {
-      return ZoomableView.tagName;
     }
+    return ZoomableView.tagName;
   }
 
   static readonly observedAttributes = Object.keys(defaultAttributes);
@@ -512,7 +509,7 @@ export class ZoomableView extends HTMLElement {
   protected onWheelEvent(e: Event) {
     const event = e as WheelEvent;
     if (event.deltaY != null) {
-      setTimeout(() => { }, 0);
+      setTimeout(() => {}, 0);
       let deltaY = event.deltaY;
       switch (event.deltaMode) {
         // It is unclear if this will ever happen.
@@ -634,4 +631,3 @@ function average(nums: Iterable<number>): number {
   }
   return i === 0 ? 0 : sum / i;
 }
-
