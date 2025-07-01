@@ -539,7 +539,7 @@ describe("SyncChain", () => {
 
   describe(".all", () => {
     it("resolves to an empty list when the list of PromiseLikes is empty", () => {
-      expect(SyncChain.all([]).get()).toEqual([]);
+      expect(SyncChain.all([]).get()).toStrictEqual([]);
     });
 
     it("resolves when all of the PromiseLikes resolve", () => {
@@ -551,7 +551,7 @@ describe("SyncChain", () => {
       expect(p.isSettled).toBe(false);
       res2("two");
       expect(p.isFulfilled).toBe(true);
-      expect(p.value).toEqual([1, "two"]);
+      expect(p.value).toStrictEqual([1, "two"]);
     });
 
     it("rejects as soon as one of the PromiseLikes rejects", () => {
@@ -572,7 +572,7 @@ describe("SyncChain", () => {
 
   describe(".allSettled", () => {
     it("resolves to an empty list when the list of PromiseLikes is empty", () => {
-      expect(SyncChain.allSettled([]).get()).toEqual([]);
+      expect(SyncChain.allSettled([]).get()).toStrictEqual([]);
     });
 
     it("resolves when all PromiseLikes settle", () => {
@@ -586,7 +586,7 @@ describe("SyncChain", () => {
       expect(p.isSettled).toBe(false);
       res3("three");
       expect(p.isFulfilled).toBe(true);
-      expect(p.value).toEqual([
+      expect(p.value).toStrictEqual([
         {
           status: "fulfilled",
           value: 1,
@@ -613,7 +613,7 @@ describe("SyncChain", () => {
       expect(p.isSettled).toBe(false);
       rej2("error");
       expect(p.isFulfilled).toBe(true);
-      expect(p.value).toEqual([
+      expect(p.value).toStrictEqual([
         {
           status: "fulfilled",
           value: 1,
@@ -693,7 +693,7 @@ describe("SyncChain", () => {
       expect(p.isSettled).toBe(false);
       rej2("two");
       expect(p.isRejected).toBe(true);
-      expect(p.error.errors).toEqual([
+      expect(p.error.errors).toStrictEqual([
         "one",
         "two",
         "three",

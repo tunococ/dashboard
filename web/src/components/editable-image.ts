@@ -226,7 +226,7 @@ export class EditableImage extends HTMLElement {
       chooseImageDialog.close();
     });
 
-    const previewImage = root.getElementById("preview-image") as HTMLImageElement;
+    // const previewImage = root.getElementById("preview-image") as HTMLImageElement;
 
     const uploadButton = root.getElementById("upload-button") as HTMLLabelElement;
     uploadButton.addEventListener("click", (e: MouseEvent) => {
@@ -246,7 +246,7 @@ export class EditableImage extends HTMLElement {
 
     })
 
-    const preview = root.getElementById("preview") as HTMLDivElement;
+    // const preview = root.getElementById("preview") as HTMLDivElement;
 
 
   }

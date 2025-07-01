@@ -9,6 +9,7 @@ import { ZoomableView } from "./zoomable-view";
 import { MoveEvent, Mover } from "../modifiers/mover";
 import { ResizeEvent, Resizer } from "../modifiers/resizer";
 import { EditableImage } from "./editable-image";
+import { AssetLibrary } from "./asset-library";
 
 export class EditableDashboard extends HTMLElement {
   /**
@@ -51,6 +52,7 @@ export class EditableDashboard extends HTMLElement {
 
     const zoomableViewTag = ZoomableView.register();
     const editableImageTag = EditableImage.register();
+    const assetLibraryTag = AssetLibrary.register();
 
     const template = document.createElement("template");
     template.innerHTML = `
@@ -89,6 +91,11 @@ export class EditableDashboard extends HTMLElement {
           transition: opacity 0.5s ease 0s;
           opacity: 0;
         }
+
+        #asset-library-dialog {
+          border: 0;
+          padding: 0;
+        }
       </style>
       <div id="render-area">
         <${zoomableViewTag} id="zoomable-view"
@@ -107,6 +114,7 @@ export class EditableDashboard extends HTMLElement {
               <button id="toggle-fullscreen" style="pointer-events: auto"></button>
             </div>
             <div style="position: absolute; top: 1rem; right: 1rem;">
+              <button id="show-assets" style="pointer-events: auto">Assets</button>
               <button id="login" style="pointer-events: auto">Log in</button>
             </div>
           </div>
@@ -120,7 +128,7 @@ export class EditableDashboard extends HTMLElement {
               <img src="${cabbaggy}" width=70 />
               <img src="${guangdang}" width=70 />
             </div>
-            <div>
+            <div style="display:none">
               <${editableImageTag} style="display: block; position: absolute; left: 0; top: 0; width: 200px; height: 200px; background-color: #7af;">
               </${editableImageTag}>
             </div>
@@ -143,6 +151,10 @@ export class EditableDashboard extends HTMLElement {
             </div>
           </div>
         </${zoomableViewTag}>
+        <dialog id="asset-library-dialog" style="background: none; width: 75%; height: 75%;">
+          <${assetLibraryTag} title="Asset Library">
+          </${assetLibraryTag}>
+        </dialog>
       </div>
     `;
     const root = this.attachShadow({ mode: "open" })
@@ -245,6 +257,29 @@ export class EditableDashboard extends HTMLElement {
     if (!loginButton) {
       throw "loginButton is null";
     }
+
+    const showAssetsButton = root.getElementById("show-assets");
+    if (!showAssetsButton) {
+      throw "showLibraryButton is null";
+    }
+    const assetLibraryDialog = root.getElementById("asset-library-dialog") as HTMLDialogElement;
+    if (!assetLibraryDialog) {
+      throw "libraryDialog is null";
+    }
+    showAssetsButton.addEventListener("click", (event: Event) => {
+      if (event.target !== showAssetsButton) {
+        return;
+      }
+      assetLibraryDialog.showModal();
+      event.stopPropagation();
+    })
+    assetLibraryDialog.addEventListener("click", (event: Event) => {
+      if (event.target !== assetLibraryDialog) {
+        return;
+      }
+      assetLibraryDialog.close();
+      event.stopPropagation();
+    })
 
     // Content
 
