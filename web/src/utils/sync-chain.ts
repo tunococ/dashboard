@@ -563,7 +563,7 @@ export class SyncChain<T = any> implements PromiseLike<T> {
 
 }
 
-function isPromiseLike<T = any>(x: any): x is PromiseLike<T> {
+export function isPromiseLike<T = any>(x: any): x is PromiseLike<T> {
   return (typeof x === "object" || typeof x === "function") && (typeof x?.then === "function");
 };
 

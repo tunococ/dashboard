@@ -1,6 +1,6 @@
+import { transformFromScreenCoordinates } from "../browser-utils/positioning";
 import {
   type Point2D,
-  transformFromScreenCoordinates,
 } from "../utils/geometry-2d";
 
 export interface MoveEventDetail {
@@ -159,7 +159,7 @@ export class Mover {
         element.removeChild(endAnchor);
         element.parentElement?.removeChild(beginAnchor);
         element.parentElement?.removeChild(moveControl);
-      } catch (_e) {}
+      } catch (_e) { }
     };
 
     this.moveControl = moveControl;

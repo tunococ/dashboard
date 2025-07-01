@@ -1,7 +1,7 @@
+import { transformFromScreenCoordinates } from "../browser-utils/positioning.ts";
 import {
   type Point2D,
   cross,
-  transformFromScreenCoordinates,
 } from "../utils/geometry-2d.ts";
 
 export interface ResizerConfig {
@@ -58,7 +58,6 @@ export type ResizeEventType =
   | "resized";
 
 export class ResizeEvent extends Event implements ResizeEventDetail {
-  type: ResizeEventType;
   resizeDirection: number;
   maintainAspectRatio: boolean;
   aspectRatio: number;
@@ -74,7 +73,6 @@ export class ResizeEvent extends Event implements ResizeEventDetail {
     options: Partial<ResizeEventDetail> & { resizer: Resizer },
   ) {
     super(type); // This event does not bubble.
-    this.type = type;
     this.resizeDirection = options.resizeDirection ?? -1;
     this.maintainAspectRatio = options.maintainAspectRatio ?? false;
     this.aspectRatio = options.aspectRatio ?? 1;

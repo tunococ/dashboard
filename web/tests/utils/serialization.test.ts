@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"; // Import Vitest functions
-import { convert } from "../../src/utils/serialization";
+import { convert, deleteAttributeAtPath, getAttributeAtPath, hasAttributeAtPath, setAttributeAtPath } from "../../src/utils/serialization";
 
 function compareArrays(a: any, b: any) {
   for (let i = 0; i < Math.min(a.length, b.length); ++i) {
@@ -57,7 +57,7 @@ describe("convert function", () => {
     const obj = ["a", { "b": ["c", "d"], "e": 0 }, 1];
     const arrayBuffer = convert(obj, "arraybuffer");
     const recovered = convert(arrayBuffer, "object");
-    expect(obj).toEqual(recovered);
+    expect(obj).toStrictEqual(recovered);
   })
 
   it("should convert between boolean and number", () => {
@@ -96,7 +96,7 @@ describe("convert function", () => {
     const str = convert(obj, "string");
     expect(str).toBe(JSON.stringify(obj));
     const recovered = convert(str, "object");
-    expect(obj).toEqual(recovered);
+    expect(obj).toStrictEqual(recovered);
 
     const nullStr = convert(null, "string");
     expect(nullStr).toBe("null");
@@ -108,7 +108,7 @@ describe("convert function", () => {
     const blob = convert(text, "blob");
 
     const blobBuffer = await blob.arrayBuffer();
-    expect(arrayBuffer).toEqual(blobBuffer);
+    expect(arrayBuffer).toStrictEqual(blobBuffer);
   })
 
   it("should override Blob's MIME type if desired", async () => {
@@ -119,4 +119,176 @@ describe("convert function", () => {
 
 })
 
+describe("hasAttributeAtPath", () => {
+  it("returns false if value is empty", () => {
+    expect(hasAttributeAtPath(null, undefined)).toBe(false);
+    expect(hasAttributeAtPath(undefined, undefined)).toBe(false);
+    expect(hasAttributeAtPath(null, "")).toBe(false);
+    expect(hasAttributeAtPath(undefined, "")).toBe(false);
+    expect(hasAttributeAtPath(null, "a")).toBe(false);
+    expect(hasAttributeAtPath(undefined, "a")).toBe(false);
+    expect(hasAttributeAtPath(null, "a.b")).toBe(false);
+    expect(hasAttributeAtPath(undefined, "a.b")).toBe(false);
+  });
+
+  it("returns true if path is empty and value is not", () => {
+    expect(hasAttributeAtPath({ a: 1 }, undefined)).toBe(true);
+    expect(hasAttributeAtPath([], undefined)).toBe(true);
+  });
+
+  it("returns true if and only if value contains a value at path", () => {
+    const value = {
+      a: ["zero", "one", "two"],
+      b: 2,
+      d: {},
+      s: "",
+      n: null,
+      u: undefined,
+    };
+    expect(hasAttributeAtPath(value, "a")).toBe(true);
+    expect(hasAttributeAtPath(value, "b")).toBe(true);
+    expect(hasAttributeAtPath(value, "d")).toBe(true);
+    expect(hasAttributeAtPath(value, "s")).toBe(true);
+    expect(hasAttributeAtPath(value, "n")).toBe(true);
+    expect(hasAttributeAtPath(value, "u")).toBe(true);
+    expect(hasAttributeAtPath(value, "v")).toBe(false);
+    expect(hasAttributeAtPath(value, "a.0")).toBe(true);
+    expect(hasAttributeAtPath(value, "a.1")).toBe(true);
+    expect(hasAttributeAtPath(value, "a.2")).toBe(true);
+    expect(hasAttributeAtPath(value, "a.3")).toBe(false);
+  });
+})
+
+describe("getAttributeAtPath", () => {
+  it("returns undefined if value is empty", () => {
+    expect(getAttributeAtPath(null, undefined)).toBeUndefined;
+    expect(getAttributeAtPath(undefined, undefined)).toBeUndefined;
+    expect(getAttributeAtPath(null, "")).toBeUndefined;
+    expect(getAttributeAtPath(undefined, "")).toBeUndefined;
+    expect(getAttributeAtPath(null, "a")).toBeUndefined;
+    expect(getAttributeAtPath(undefined, "a")).toBeUndefined;
+    expect(getAttributeAtPath(null, "a.b")).toBeUndefined;
+    expect(getAttributeAtPath(undefined, "a.b")).toBeUndefined;
+  });
+
+  it("returns value if path is empty", () => {
+    const value1 = { a: 1 };
+    expect(getAttributeAtPath(value1, undefined)).toBe(value1);
+
+    const value2 = [1, 2, 3, 4, 5];
+    expect(getAttributeAtPath(value2, undefined)).toBe(value2);
+  });
+
+  it("returns the value at the given path inside the input value", () => {
+    const value: any = {
+      a: ["zero", "one", "two"],
+      b: 2,
+      d: {},
+      s: "",
+      n: null,
+      u: undefined,
+    };
+    expect(getAttributeAtPath(value, "a")).toBe(value.a);
+    expect(getAttributeAtPath(value, "b")).toBe(value.b);
+    expect(getAttributeAtPath(value, "d")).toBe(value.d);
+    expect(getAttributeAtPath(value, "s")).toBe(value.s);
+    expect(getAttributeAtPath(value, "n")).toBe(value.n);
+    expect(getAttributeAtPath(value, "u")).toBe(value.u);
+    expect(getAttributeAtPath(value, "v")).toBe(value.v);
+    expect(getAttributeAtPath(value, "a.0")).toBe(value.a[0]);
+    expect(getAttributeAtPath(value, "a.1")).toBe(value.a[1]);
+    expect(getAttributeAtPath(value, "a.2")).toBe(value.a[2]);
+    expect(getAttributeAtPath(value, "a.3")).toBe(value.a[3]);
+  });
+})
+
+describe("setAttributeAtPath", () => {
+  it("sets the value at the given path inside the input value", () => {
+    const value = {};
+    expect(setAttributeAtPath(value, "a", [])).toStrictEqual({ a: [] });
+    expect(setAttributeAtPath(value, "a.0", "zero")).toStrictEqual({
+      a: ["zero"],
+    });
+    expect(setAttributeAtPath(value, "a.1", "one")).toStrictEqual({
+      a: ["zero", "one"]
+    });
+    expect(setAttributeAtPath(value, "a.2", "two")).toStrictEqual({
+      a: ["zero", "one", "two"],
+    });
+    expect(setAttributeAtPath(value, "b", 2)).toStrictEqual({
+      a: ["zero", "one", "two"],
+      b: 2,
+    });
+    expect(setAttributeAtPath(value, "s", "")).toStrictEqual({
+      a: ["zero", "one", "two"],
+      b: 2,
+      s: "",
+    });
+    expect(setAttributeAtPath(value, "s", "something")).toStrictEqual({
+      a: ["zero", "one", "two"],
+      b: 2,
+      s: "something",
+    });
+    expect(setAttributeAtPath(value, "n", null)).toStrictEqual({
+      a: ["zero", "one", "two"],
+      b: 2,
+      s: "something",
+      n: null,
+    });
+    expect(setAttributeAtPath(value, "u", undefined)).toStrictEqual({
+      a: ["zero", "one", "two"],
+      b: 2,
+      s: "something",
+      n: null,
+      u: undefined,
+    });
+    expect(setAttributeAtPath(value, "a", "replaced")).toStrictEqual({
+      a: "replaced",
+      b: 2,
+      s: "something",
+      n: null,
+      u: undefined,
+    });
+  });
+})
+
+describe("deleteAttributeAtPath", () => {
+  it("deletes the value at the given path inside the input value if it exists", () => {
+    const expectedValue: any = {
+      a: ["zero", "one", "two"],
+      b: 2,
+      d: {},
+      s: "",
+      n: null,
+      u: undefined,
+    };
+    const value = structuredClone(expectedValue);
+
+    expect(deleteAttributeAtPath(value, "c")).toStrictEqual(expectedValue);
+    expect(deleteAttributeAtPath(value, "a.4")).toStrictEqual(expectedValue);
+
+    delete expectedValue.a[1];
+    expect(deleteAttributeAtPath(value, "a.1")).toStrictEqual(expectedValue);
+
+    expect(hasAttributeAtPath(value, "n")).toBe(true);
+    expect(getAttributeAtPath(value, "n")).toBe(null);
+    expect(hasAttributeAtPath(value, "u")).toBe(true);
+    expect(getAttributeAtPath(value, "u")).toBe(undefined);
+
+    delete expectedValue.n;
+    expect(deleteAttributeAtPath(value, "n")).toStrictEqual(expectedValue);
+    expect(hasAttributeAtPath(value, "n")).toBe(false);
+    expect(getAttributeAtPath(value, "n")).toBe(undefined);
+
+    delete expectedValue.u;
+    expect(deleteAttributeAtPath(value, "u")).toStrictEqual(expectedValue);
+    expect(hasAttributeAtPath(value, "u")).toBe(false);
+    expect(getAttributeAtPath(value, "u")).toBe(undefined);
+
+    delete expectedValue.a;
+    expect(deleteAttributeAtPath(value, "a")).toStrictEqual(expectedValue);
+    expect(hasAttributeAtPath(value, "a")).toBe(false);
+    expect(getAttributeAtPath(value, "a")).toBe(undefined);
+  });
+})
 

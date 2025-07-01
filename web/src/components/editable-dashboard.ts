@@ -9,6 +9,8 @@ import { ZoomableView } from "./zoomable-view";
 import { MoveEvent, Mover } from "../modifiers/mover";
 import { ResizeEvent, Resizer } from "../modifiers/resizer";
 import { EditableImage } from "./editable-image";
+import { AssetLibrary, AssetLibraryEvent } from "./asset-library";
+import { WindowHeader } from "./window-header";
 
 export class EditableDashboard extends HTMLElement {
   /**
@@ -51,6 +53,8 @@ export class EditableDashboard extends HTMLElement {
 
     const zoomableViewTag = ZoomableView.register();
     const editableImageTag = EditableImage.register();
+    const assetLibraryTag = AssetLibrary.register();
+    const windowHeaderTag = WindowHeader.register();
 
     const template = document.createElement("template");
     template.innerHTML = `
@@ -89,6 +93,16 @@ export class EditableDashboard extends HTMLElement {
           transition: opacity 0.5s ease 0s;
           opacity: 0;
         }
+
+        #asset-library {
+          width: 100%;
+          height: 100%;
+        }
+
+        #asset-library-dialog {
+          border: 0;
+          padding: 0;
+        }
       </style>
       <div id="render-area">
         <${zoomableViewTag} id="zoomable-view"
@@ -107,6 +121,7 @@ export class EditableDashboard extends HTMLElement {
               <button id="toggle-fullscreen" style="pointer-events: auto"></button>
             </div>
             <div style="position: absolute; top: 1rem; right: 1rem;">
+              <button id="show-assets" style="pointer-events: auto">Assets</button>
               <button id="login" style="pointer-events: auto">Log in</button>
             </div>
           </div>
@@ -120,7 +135,7 @@ export class EditableDashboard extends HTMLElement {
               <img src="${cabbaggy}" width=70 />
               <img src="${guangdang}" width=70 />
             </div>
-            <div>
+            <div style="display:none">
               <${editableImageTag} style="display: block; position: absolute; left: 0; top: 0; width: 200px; height: 200px; background-color: #7af;">
               </${editableImageTag}>
             </div>
@@ -143,6 +158,16 @@ export class EditableDashboard extends HTMLElement {
             </div>
           </div>
         </${zoomableViewTag}>
+        <dialog
+          id="asset-library-dialog"
+          data-title="Asset Library"
+          style="background: none; width: 75%; height: 75%; border-radius: 0.5em; overflow: clip;"
+        >
+          <${windowHeaderTag} id="asset-library-header" text="Asset Library">
+            <${assetLibraryTag} id="asset-library">
+            </${assetLibraryTag}>
+          </${windowHeaderTag}>
+        </dialog>
       </div>
     `;
     const root = this.attachShadow({ mode: "open" })
@@ -245,6 +270,46 @@ export class EditableDashboard extends HTMLElement {
     if (!loginButton) {
       throw "loginButton is null";
     }
+
+    const showAssetsButton = root.getElementById("show-assets");
+    if (!showAssetsButton) {
+      throw "showAssetsButton is null";
+    }
+    const assetLibraryDialog = root.getElementById("asset-library-dialog") as HTMLDialogElement;
+    if (!assetLibraryDialog) {
+      throw "assetLibraryDialog is null";
+    }
+    const assetLibrary = root.getElementById("asset-library") as AssetLibrary;
+    if (!assetLibrary) {
+      throw "assetLibrary is null";
+    }
+    const assetLibraryHeader = root.getElementById("asset-library-header") as WindowHeader;
+    if (!assetLibraryHeader) {
+      throw "assetLibraryHeader is null";
+    }
+    showAssetsButton.addEventListener("click", (event: Event) => {
+      if (event.target !== showAssetsButton) {
+        return;
+      }
+      assetLibraryDialog.showModal();
+      assetLibrary.focus();
+      event.stopPropagation();
+    })
+    assetLibraryHeader.addEventListener("close", (event: Event) => {
+      assetLibraryDialog.close();
+      event.stopPropagation();
+    })
+    assetLibrary.addEventListener("cancel", (event: AssetLibraryEvent) => {
+      assetLibraryDialog.close();
+      event.preventDefault();
+    });
+    assetLibrary.addEventListener("ok", (event: AssetLibraryEvent) => {
+      console.log(`selectedAssets:`, event.selectedAssets);
+      for (const asset of event.selectedAssets) {
+        console.log(`${asset.name}`);
+      }
+      event.preventDefault();
+    })
 
     // Content
 

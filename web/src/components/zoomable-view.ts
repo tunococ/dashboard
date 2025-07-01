@@ -1,4 +1,5 @@
-import { centroid, dist, transformFromScreenCoordinates } from "../utils/geometry-2d";
+import { centroid, dist } from "../utils/geometry-2d";
+import { transformFromScreenCoordinates } from "../browser-utils/positioning";
 
 
 const defaultAttributes: Record<string, any> = {
