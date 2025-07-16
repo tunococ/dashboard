@@ -7,6 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
+    "include": ["src/**/*.ts", "tests/**/*.ts"],
     "ignore": ["dist/", "node_modules/"]
   },
   "formatter": {
@@ -23,16 +24,22 @@
       "complexity": {
         "noUselessLoneBlockStatements": "off"
       },
+      "performance": {
+        "noDelete": "off"
+      },
       "suspicious": {
         "noDoubleEquals": "warn",
         "noExplicitAny": "off",
-        "noGlobalIsNan": "warn"
+        "noGlobalIsNan": "warn",
+        "noThenProperty": "off"
       },
       "style": {
         "noInferrableTypes": "off",
         "noNonNullAssertion": "off",
         "noParameterAssign": "off",
-        "useNumberNamespace": "warn"
+        "noUnusedTemplateLiteral": "off",
+        "useNumberNamespace": "warn",
+        "useTemplate": "off"
       }
     }
   },
