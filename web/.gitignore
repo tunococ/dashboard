@@ -4,3 +4,6 @@ out/
 docs/
 coverage/
 node-coverage/
+
+*storybook.log
+storybook-static

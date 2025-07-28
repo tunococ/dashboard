@@ -228,8 +228,8 @@ export class Resizer implements ResizerConfig {
 
   attach(element: HTMLElement): () => void {
     this.detach();
-    if (!element.parentElement) {
-      throw "Resizer cannot attach to an element without parentElement";
+    if (!element.offsetParent) {
+      throw "Resizer cannot attach to an element without offsetParent";
     }
     if (getComputedStyle(element).position === "static") {
       element.style.position = "relative";
@@ -316,7 +316,7 @@ export class Resizer implements ResizerConfig {
       for (const resizeControl of resizeControls) {
         try {
           element.removeChild(resizeControl);
-        } catch (_e) {}
+        } catch (_e) { }
       }
     };
 
@@ -422,9 +422,9 @@ export class Resizer implements ResizerConfig {
 
   findSizeForAspectRatio(strategy: AspectRatioFitStrategy):
     | {
-        width: number;
-        height: number;
-      }
+      width: number;
+      height: number;
+    }
     | undefined {
     if (!this._element || !(this.aspectRatio > 0)) {
       return undefined;
@@ -771,12 +771,12 @@ export class Resizer implements ResizerConfig {
           } else {
             targetWidth = Math.min(
               this.resizingInitialWidth +
-                displacement.x * this.resizingWidthDirection,
+              displacement.x * this.resizingWidthDirection,
               expandLimitWidth,
             );
             targetHeight = Math.min(
               this.resizingInitialHeight +
-                displacement.y * this.resizingHeightDirection,
+              displacement.y * this.resizingHeightDirection,
               expandLimitHeight,
             );
           }

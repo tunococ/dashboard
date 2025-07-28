@@ -74,7 +74,7 @@ export class Mover {
     this.attach(v);
   }
 
-  constructor(config: Partial<MoverConfig>) {
+  constructor(config: Partial<MoverConfig> = {}) {
     for (const key in config) {
       (this as any)[key] = config[key as ConfigKey];
     }
@@ -87,8 +87,8 @@ export class Mover {
   private _detach: (() => void) | undefined;
 
   attach(element: HTMLElement): () => void {
-    if (!element.parentElement) {
-      throw "Mover cannot attach to an element without parentElement";
+    if (!element.offsetParent) {
+      throw "Mover cannot attach to an element without offsetParent";
     }
     if (getComputedStyle(element).position === "static") {
       element.style.position = "relative";
@@ -126,7 +126,7 @@ export class Mover {
     beginAnchor.style.width = "0";
     beginAnchor.style.height = "0";
     beginAnchor.style.zIndex = "-2147483647";
-    element.parentElement.appendChild(beginAnchor);
+    element.offsetParent.appendChild(beginAnchor);
 
     const endAnchor = document.createElement("div");
     endAnchor.style.pointerEvents = "none";
@@ -141,7 +141,7 @@ export class Mover {
     endAnchor.style.width = "0";
     endAnchor.style.height = "0";
     beginAnchor.style.zIndex = "-2147483647";
-    element.parentElement.appendChild(endAnchor);
+    element.offsetParent.appendChild(endAnchor);
 
     const listener = (event: PointerEvent) => {
       this.onPointerEvent(event);
@@ -155,9 +155,9 @@ export class Mover {
     this._detach = () => {
       try {
         element.removeChild(endAnchor);
-        element.parentElement?.removeChild(beginAnchor);
-        element.parentElement?.removeChild(moveControl);
-      } catch (_e) {}
+        element.offsetParent?.removeChild(beginAnchor);
+        element.offsetParent?.removeChild(moveControl);
+      } catch (_e) { }
     };
 
     this.moveControl = moveControl;
