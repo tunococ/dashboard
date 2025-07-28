@@ -140,7 +140,7 @@ export class EditableDashboard extends HTMLElement {
               <img class="walker" src="${guangdang}" width=70 />
               <img class="walker" src="${sneal}" width=70 />
             </div>
-            <div id="resizable" style="display: none; position: absolute; pointer-events: auto; bottom: 1em; left: 1em; width: 12em; height: 6em;">
+            <div id="resizable" style="position: absolute; pointer-events: auto; bottom: 1em; left: 1em; width: 12em; height: 6em;">
               <div id="resizable-interior" style="background-color: #ddf; overflow: scroll; width: 100%; height: 100%; border: 2px solid transparent;">
                 <div style="width: 100%; height: 100%; overflow: scroll;">
                   <input type="checkbox" id="toggle-resize" name="toggle-resize"
