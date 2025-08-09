@@ -58,3 +58,4 @@ export function getRelativeOffset(root: HTMLElement, descendant: HTMLElement) {
     left,
   };
 }
+
