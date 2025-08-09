@@ -191,7 +191,7 @@ export class EditableDashboard extends HTMLElement {
       overlay.style.opacity = "1";
       hideOverlay = setTimeout(() => {
         overlay.style.opacity = "0";
-      }, 5000);
+      }, 5000) as any;
     });
 
     // Overlay
@@ -205,7 +205,7 @@ export class EditableDashboard extends HTMLElement {
       overlay.style.opacity = "1";
       hideOverlay = setTimeout(() => {
         overlay.style.opacity = "0";
-      }, 1500);
+      }, 1500) as any;
     });
 
     const toggleFullscreenButton = root.getElementById("toggle-fullscreen");
