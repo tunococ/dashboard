@@ -13,24 +13,39 @@ type StoryArgs = {
 
 const meta = {
   title: 'LayoutManager/LayoutElement',
+  component: 'layout-element',
   // This component will have an automatically generated Autodocs entry: https://storybook.js.org/docs/writing-docs/autodocs
   tags: ['autodocs'],
   render: (args: StoryArgs) => {
     const { x, y } = args;
     let layoutElement: LayoutElement | undefined = undefined;
+    let layoutElementId: number | undefined;
     let context: HTMLDivElement | undefined = undefined;
+    let layoutContext: LayoutContext | undefined;
     const tryUpdateElement = () => {
-      if (!context || !layoutElement) {
+      if (!context || !layoutContext || !layoutElement) {
         return;
       }
       layoutElement.x = x(context);
       layoutElement.y = y(context);
+      setTimeout(
+        () => {
+          if (!layoutContext || !layoutElement || layoutElementId !== undefined) {
+            return;
+          }
+          layoutElementId = layoutContext.addElement(
+            layoutContext.createRootRelativeElement(layoutElement)
+          )
+        },
+        0,
+      );
     }
     const onContextRendered = (c?: Element) => {
       if (!c) {
         return;
       }
       context = c as HTMLDivElement;
+      layoutContext = new LayoutContext(context);
       tryUpdateElement();
     }
     const onLayoutElementRendered = (le?: Element) => {
@@ -57,8 +72,8 @@ const meta = {
       layoutElement.resizable = !!(e.target as HTMLInputElement).checked;
     }
     return html`
-      <layout-context id="layout-context"
-        style="position: relative; width: 400px; height: 400px; background-color: #ffefef; display: block;"
+      <div id="layout-container"
+        style="position: relative; width: 80vw; height: 80vh; background-color: #ffefef; display: block;"
         ${ref(onContextRendered)}
       >
         <div>
@@ -84,7 +99,6 @@ const meta = {
   },
   async beforeEach() {
     LayoutElement.register("layout-element");
-    LayoutContext.register("layout-context");
   },
   args: {
     x: () => new AbsoluteLayoutInterval({ start: 100, length: 250 }),

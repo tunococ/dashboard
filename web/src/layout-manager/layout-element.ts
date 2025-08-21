@@ -2,16 +2,35 @@ import { css, html, LitElement } from "lit";
 import { property } from "lit/decorators/property.js";
 import { Interval, LayoutInterval, LayoutRegion } from "./layout-region";
 import { ref } from "lit/directives/ref.js";
-import { getElementLayout, LayoutContext } from "./layout-context";
-import { findAncestorOfType } from "../browser-utils/dom";
 
+/**
+ * Pointer events on control elements for resizing and moving.
+ */
 export class LayoutControlEvent extends Event {
-  touchEvent: PointerEvent;
+  /**
+   * The pointer event fired to a control element.
+   */
+  pointerEvent: PointerEvent;
+
+  /**
+   * Index of the control element that was targeted by the pointer event.
+   *
+   * 0: Center element
+   * 1: Top element
+   * 2: Right element
+   * 3: Bottom element
+   * 4: Left element
+   * 5: Top-left element
+   * 6: Top-right element
+   * 7: Bottom-right element
+   * 8: Bottom-left element
+   */
   index: number;
-  constructor(index: number, touchEvent: PointerEvent) {
+
+  constructor(index: number, pointerEvent: PointerEvent) {
     super("layoutcontrol");
     this.index = index;
-    this.touchEvent = touchEvent;
+    this.pointerEvent = pointerEvent;
   }
 }
 
@@ -61,26 +80,6 @@ export class LayoutElement extends LitElement {
   region: LayoutRegion = new
     LayoutRegion([undefined, undefined, undefined]);
 
-  savedRegion: LayoutRegion = new LayoutRegion(
-    [undefined, undefined, undefined]
-  );
-
-  saveRegion(newRegion?: LayoutRegion) {
-    if (!newRegion) {
-      this.savedRegion = getElementLayout(this);
-    }
-  }
-
-  loadRegion() {
-    this.region = structuredClone(this.savedRegion);
-  }
-
-  useRelativeLayout() {
-    if (!this.context) {
-      return;
-    }
-  }
-
   @property()
   get x(): LayoutInterval | undefined {
     return this.region.axis[0];
@@ -120,26 +119,10 @@ export class LayoutElement extends LitElement {
     this.requestUpdate();
   }
 
-  get context(): LayoutContext | null | undefined {
-    return this._context;
+  get aspectRatio() {
+    return (this.region.axis[2]?.actual.length ?? 0) /
+      (this.region.axis[1]?.actual.length ?? 0)
   }
-
-  set context(c: LayoutContext | null | undefined) {
-    if (c !== this._context && c instanceof LayoutContext) {
-      this._clearContextListener();
-      this._context = c;
-      const listener = () => {
-        this.requestUpdate();
-      };
-      c.addEventListener("layoutchanged", listener);
-      this._clearContextListener = () => {
-        c.removeEventListener("layoutchanged", listener);
-      }
-    }
-  }
-
-  _context?: LayoutContext | null;
-  _clearContextListener: () => void = () => { };
 
   constructor() {
     super();
@@ -158,6 +141,7 @@ export class LayoutElement extends LitElement {
       :host {
         --srem: 1rem;
         position: absolute;
+        display: inline-block;
       }
 
       #container {
@@ -265,23 +249,7 @@ export class LayoutElement extends LitElement {
     `;
   }
 
-  private container: HTMLDivElement | undefined;
-
   private controls: (HTMLDivElement | undefined)[] = Array(9).fill(undefined);
-
-  /*
-   * This function tries to find the closest LayoutContext by going up the DOM
-   * tree from offsetParent.
-   */
-  findContext() {
-    const context = findAncestorOfType(this, LayoutContext);
-    this.context = context;
-  }
-
-  initializeContainer(container?: HTMLDivElement) {
-    this.container = container;
-    this.findContext();
-  }
 
   render() {
     const onControlEvent = (event: PointerEvent) => {
@@ -321,11 +289,9 @@ export class LayoutElement extends LitElement {
     return html`
       <div id="container" part="container"
         @contextmenu=${this.onContextMenu}
-        ${ref(e => { this.initializeContainer(e as any); })}
       >
         <slot></slot>
         ${controls}
-
       </div>
     `;
 
@@ -337,6 +303,7 @@ export class LayoutElement extends LitElement {
     this.style.width = `${region[0].length}px`;
     this.style.top = `${region[1].start}px`;
     this.style.height = `${region[1].length}px`;
+    console.log(`XXX region:`, region)
     if (region[2]) {
       this.style.zIndex = `${region[2].start}`;
     } else {
@@ -426,8 +393,6 @@ export class LayoutElement extends LitElement {
     this.showBorder(this._resizable || this._movable);
   }
 
-  keepAspectRatio: boolean = false;
-
   onControlEvent(event: PointerEvent) {
     const target = event.target as HTMLDivElement;
     if (!target) {
@@ -437,9 +402,6 @@ export class LayoutElement extends LitElement {
     if (index < 0) {
       return;
     }
-
-    event.preventDefault();
-    event.stopPropagation();
     this.dispatchEvent(new LayoutControlEvent(index, event))
   }
 

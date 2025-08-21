@@ -1,5 +1,3 @@
-import { FixedLengthArray } from "../utils/common-types";
-
 export interface LayoutLength {
   get actual(): number;
 }
