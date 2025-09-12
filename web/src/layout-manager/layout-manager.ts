@@ -1,9 +1,11 @@
 import { css, html, LitElement, nothing } from "lit";
 import { ref } from "lit/directives/ref.js";
 import { html as shtml } from "lit/static-html.js";
-import { ConfiguredLayoutElement, ConfiguredRegion, LayoutContext } from "./layout-context";
-import { LayoutControlEvent } from "./layout-element";
+import { ConfiguredRegion } from "./layout-context";
+import { LayoutControlEvent, LayoutElement } from "./layout-element";
 import { Point2D } from "../utils/geometry-2d";
+
+export type ManagedElementId = bigint;
 
 export class LayoutManager extends LitElement {
 
@@ -68,7 +70,6 @@ export class LayoutManager extends LitElement {
   private initializeContainer = (e: any) => {
     this.container = e;
     if (this.container) {
-      this.context.container = this.container;
       setTimeout(() => this.requestUpdate(), 0);
     }
   }
@@ -108,105 +109,132 @@ export class LayoutManager extends LitElement {
     `;
   }
 
-  container?: HTMLDivElement;
-
-  private _elements: Map<number, ConfiguredLayoutElement> = new Map();
-  private _elementToId: Map<ConfiguredLayoutElement, number> = new Map();
-  private _elementIds: number[] = [];
-  private _lastId: number = 0;
-
-  context: LayoutContext = new LayoutContext();
-
   constructor() {
     super();
   }
 
-  addElement(element: ConfiguredLayoutElement) {
-    const id = this.context.addElement(element);
-    if (id === undefined) {
+  container?: HTMLDivElement;
+
+  private _idToManagedElement: Map<ManagedElementId, ManagedElement> = new Map();
+  private _managedElementToId: Map<ManagedElement, ManagedElementId> = new Map();
+  private _elementToId: Map<LayoutElement, ManagedElementId> = new Map();
+  private _elementIds: ManagedElementId[] = [];
+  private _lastId: ManagedElementId = 0n;
+
+  addManagedElement(managedElement: ManagedElement) {
+    const { element } = managedElement;
+    if (this._managedElementToId.has(managedElement) ||
+      this._elementToId.has(element)) {
       return undefined;
     }
-    this.context.useConfiguredRegionById(id);
-    const listener = (e: Event) => {
-      this.onLayoutControlEvent(e as LayoutControlEvent, element);
-    };
-    element.element.addEventListener("layoutcontrol", listener);
-    this.elementData(id).controlListener = listener;
-    this.requestUpdate();
+    const id = this._lastId;
+    ++this._lastId;
+
+    this._idToManagedElement.set(id, managedElement);
+    this._managedElementToId.set(managedElement, id);
+    this._elementToId.set(element, id);
+    this._elementIds.push(id);
+
+    managedElement.layoutControlEventListener =
+      (event: LayoutControlEvent) => {
+        this.onLayoutControlEvent(event, managedElement);
+      };
+
+    element.addEventListener(
+      "layoutcontrol",
+      managedElement.layoutControlEventListener,
+    );
+
     return id;
   }
 
-  removeElementById(id: number) {
-    if (!this.context) {
-      return undefined;
-    }
-    const element = this.context.removeElementById(id);
-    if (!element) {
-      return undefined;
-    }
-    const listener = this.elementData(id).controlListener;
-    if (listener) {
-      element.element.removeEventListener("layoutcontrol", listener);
-    }
-    this.deleteElementData(id);
-    this.requestUpdate();
-    return element;
-
+  getManagedElementById(id: ManagedElementId) {
+    return this._idToManagedElement.get(id);
   }
 
-  removeElement(element: ConfiguredLayoutElement) {
-    if (!this.context) {
-      return undefined;
+  removeManagedElementById(id: ManagedElementId) {
+    const managedElement = this._idToManagedElement.get(id);
+    if (!managedElement) {
+      return false;
     }
-    const id = this.context.findElementId(element);
+    if (!this._managedElementToId.has(managedElement)) {
+      throw new Error("missing key from _managedElementToId");
+    }
+    if (!this._elementToId.has(managedElement.element)) {
+      throw new Error("missing key from _elementToId");
+    }
+    const index = this._elementIds.findIndex(storedId => storedId === id);
+    if (index < 0) {
+      throw new Error("missing id from _elementIds");
+    }
+    this._idToManagedElement.delete(id);
+    this._managedElementToId.delete(managedElement);
+    this._elementIds.splice(index);
+
+    const { element, layoutControlEventListener } = managedElement;
+    if (layoutControlEventListener) {
+      this._elementToId.delete(element);
+      element.removeEventListener(
+        "layoutcontrol",
+        layoutControlEventListener,
+      );
+    }
+
+    return true;
+  }
+
+  getIdOfManagedElement(managedElement: ManagedElement) {
+    return this._managedElementToId.get(managedElement);
+  }
+
+  getIdOfLayoutElement(element: LayoutElement) {
+    return this._elementToId.get(element);
+  }
+
+  getManagedElementOfLayoutElement(element: LayoutElement):
+    [bigint, ManagedElement] | undefined {
+    const id = this._elementToId.get(element);
     if (id === undefined) {
       return undefined;
     }
-    return this.removeElementById(id);
+    return [id, this._idToManagedElement.get(id)!];
   }
 
-  private idToElementData: Map<number, ElementData> = new Map();
-
-  get elementIds() {
-    return this.idToElementData.keys();
+  get ids() {
+    return this._elementIds;
   }
 
-  elementData(id: number) {
-    const elementData = this.idToElementData.get(id);
-    if (elementData) {
-      return elementData;
+  get managedElements() {
+    return this._elementIds.map(
+      id => this._idToManagedElement.get(id)!
+    );
+  }
+
+  managedElement(id: ManagedElementId | LayoutElement) {
+    if (id instanceof LayoutElement) {
+      return this.getManagedElementOfLayoutElement(id);
     }
-    const newData: ElementData = {};
-    this.idToElementData.set(id, newData);
-    return newData;
+    return this.getManagedElementById(id);
   }
 
-  private deleteElementData(id: number) {
-    this.idToElementData.delete(id);
+  get layoutElements() {
+    return this._elementIds.map(
+      id => this._idToManagedElement.get(id)!.element
+    );
   }
 
-  saveConfiguredRegions() {
-    if (!this.context) {
-      return false;
-    }
-    for (const [id, elementData] of this.idToElementData) {
-      const element = this.context.getElementById(id);
-      if (!element) {
-        continue;
-      }
-      elementData.savedConfiguredRegion = element.region;
-    }
-    return true;
+  layoutElement(id: ManagedElementId) {
+    return this.getManagedElementById(id)?.element;
   }
 
   private captureIndex?: number;
   private capturePointerId?: number;
-  private captureElement?: ConfiguredLayoutElement;
+  private captureElement?: ManagedElement;
   private initialPoint: Point2D = { x: 0, y: 0 };
 
   private onLayoutControlEvent(
     event: LayoutControlEvent,
-    element: ConfiguredLayoutElement,
+    element: ManagedElement,
   ) {
     if (!this.container) {
       return;
@@ -356,15 +384,8 @@ export class LayoutManager extends LitElement {
     const id = element?.id;
     if (!element || (id === undefined)) {
       throw new Error("no valid element in commitChange");
+      this.captureElement = undefined;
     }
-
-    const elementData = this.elementData(id);
-    elementData.savedConfiguredRegion = element.region;
-
-    this.captureIndex = undefined;
-    this.capturePointerId = undefined;
-    this.captureElement = undefined;
-  }
 
   private moveElement(displacement: Point2D) {
     const configuredLayoutElement = this.captureElement;
@@ -401,7 +422,6 @@ export class LayoutManager extends LitElement {
   private resizeElement(displacement: Point2D) {
 
   }
-
 }
 
 export interface ElementConfiguration {
@@ -410,8 +430,26 @@ export interface ElementConfiguration {
   metadata?: any;
 }
 
-interface ElementData extends ElementConfiguration {
-  element?: ConfiguredLayoutElement;
-  controlListener?: (event: Event) => void;
-  savedConfiguredRegion?: ConfiguredRegion;
+export class ManagedElement {
+  metadata?: any;
+  element: LayoutElement;
+  region: ConfiguredRegion;
+  aspectRatio?: number;
+  id?: number;
+  layoutControlEventListener?: (event: LayoutControlEvent) => void;
+
+  constructor(element: LayoutElement, region: ConfiguredRegion) {
+    this.element = element;
+    this.region = region;
+    this.element.region = region;
+  }
+
+  loadConfiguredRegion() {
+    this.element.region = this.region;
+  }
+
+  saveConfiguredRegion() {
+    this.region = this.element.region;
+  }
 }
+

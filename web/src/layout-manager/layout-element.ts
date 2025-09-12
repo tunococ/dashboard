@@ -34,6 +34,12 @@ export class LayoutControlEvent extends Event {
   }
 }
 
+declare global {
+  interface HTMLElementEventMap {
+    "layoutcontrol": LayoutControlEvent;
+  }
+}
+
 export class LayoutElementEvent extends Event {
   innerEvent?: Event;
   constructor(type: string, innerEvent?: Event) {
@@ -303,7 +309,6 @@ export class LayoutElement extends LitElement {
     this.style.width = `${region[0].length}px`;
     this.style.top = `${region[1].start}px`;
     this.style.height = `${region[1].length}px`;
-    console.log(`XXX region:`, region)
     if (region[2]) {
       this.style.zIndex = `${region[2].start}`;
     } else {
@@ -405,5 +410,19 @@ export class LayoutElement extends LitElement {
     this.dispatchEvent(new LayoutControlEvent(index, event))
   }
 
+  private _resizeObserver: ResizeObserver = new ResizeObserver(() => {
+    this.requestUpdate();
+  });
+
+  connectToContainer(container: HTMLElement) {
+    this._resizeObserver.disconnect();
+    if (container) {
+      this._resizeObserver.observe(container);
+    }
+  }
+
+  disconnectFromContainer() {
+    this._resizeObserver.disconnect();
+  }
 }
 
