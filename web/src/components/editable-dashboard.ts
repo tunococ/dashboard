@@ -6,6 +6,7 @@ import guangdang from "../../public/Guangdang.png";
 import cabbaggy from "../../public/cabbaggy.png";
 import seal from "../../public/seal.png";
 import sneal from "../../public/sneal.png";
+import wigglytuff from "../../public/Wigglytuff.png";
 import { MoveEvent, Mover } from "../modifiers/mover";
 import { ResizeEvent, Resizer } from "../modifiers/resizer";
 import { AssetLibrary, type AssetLibraryEvent } from "./asset-library";
@@ -123,6 +124,9 @@ export class EditableDashboard extends HTMLElement {
             </div>
           </div>
           <div id="dashboard" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 480px; height 200px;">
+            <div style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
+              <img src="${wigglytuff}" width=100 />
+            </div>
             <div id="clock" style="white-space:pre;">
             </div>
             <div style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
