@@ -7,6 +7,7 @@ import cabbaggy from "../../public/cabbaggy.png";
 import seal from "../../public/seal.png";
 import sneal from "../../public/sneal.png";
 import wigglytuff from "../../public/Wigglytuff.png";
+import oddish from "../../public/Oddish.png";
 import { MoveEvent, Mover } from "../modifiers/mover";
 import { ResizeEvent, Resizer } from "../modifiers/resizer";
 import { AssetLibrary, type AssetLibraryEvent } from "./asset-library";
@@ -121,6 +122,7 @@ export class EditableDashboard extends HTMLElement {
             <div style="position: absolute; top: 1rem; right: 1rem;">
               <button id="show-assets" style="pointer-events: auto">Assets</button>
               <button id="login" style="pointer-events: auto">Log in</button>
+              <button id="toggle-walkers" style="pointer-events: auto">Toggle walkers</button>
             </div>
           </div>
           <div id="dashboard" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 480px; height 200px;">
@@ -130,12 +132,13 @@ export class EditableDashboard extends HTMLElement {
             <div id="clock" style="white-space:pre;">
             </div>
             <div style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
-              <img src="${seal}" width=70 />
-              <img src="${fuecoco}" width=70 />
-              <img src="${daiki}" width=70 />
-              <img src="${cabbaggy}" width=70 />
-              <img src="${guangdang}" width=70 />
-              <img src="${sneal}" width=70 />
+              <img class="walker" src="${daiki}" width=70 />
+              <img class="walker" src="${seal}" width=70 />
+              <img class="walker" src="${fuecoco}" width=70 />
+              <img src="${oddish}" width=80 />
+              <img class="walker" src="${cabbaggy}" width=70 />
+              <img class="walker" src="${guangdang}" width=70 />
+              <img class="walker" src="${sneal}" width=70 />
             </div>
             <div id="resizable" style="display: none; position: absolute; pointer-events: auto; bottom: 1em; left: 1em; width: 12em; height: 6em;">
               <div id="resizable-interior" style="background-color: #ddf; overflow: scroll; width: 100%; height: 100%; border: 2px solid transparent;">
@@ -263,6 +266,27 @@ export class EditableDashboard extends HTMLElement {
         zoomableView.zoomToFit(true);
       }
     });
+
+    const toggleWalkersButton = root.getElementById("toggle-walkers");
+    if (!toggleWalkersButton) {
+      throw "toggleWalkersButton is null";
+    }
+    let walkersEnabled = true;
+    toggleWalkersButton.addEventListener("click", (event: MouseEvent) => {
+      if (event.target === toggleWalkersButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        const walkers = root.querySelectorAll(".walker");
+        walkersEnabled = !walkersEnabled;
+        console.log(`XXX toggling: ${walkersEnabled}`)
+        for (const walker of walkers) {
+          if (walker instanceof HTMLElement) {
+            console.log(`XXX toggling walker: ${walkersEnabled}`)
+            walker.style.display = walkersEnabled ? "" : "none";
+          }
+        }
+      }
+    })
 
     const loginButton = root.getElementById("login");
     if (!loginButton) {
