@@ -7,6 +7,7 @@ import cabbaggy from "../../public/cabbaggy.png";
 import seal from "../../public/seal.png";
 import sneal from "../../public/sneal.png";
 import wigglytuff from "../../public/Wigglytuff.png";
+import mushee from "../../public/Mushee.png";
 import oddish from "../../public/Oddish.png";
 import { MoveEvent, Mover } from "../modifiers/mover";
 import { ResizeEvent, Resizer } from "../modifiers/resizer";
@@ -135,10 +136,13 @@ export class EditableDashboard extends HTMLElement {
               <img class="walker" src="${daiki}" width=70 />
               <img class="walker" src="${seal}" width=70 />
               <img class="walker" src="${fuecoco}" width=70 />
-              <img src="${oddish}" width=80 />
               <img class="walker" src="${cabbaggy}" width=70 />
               <img class="walker" src="${guangdang}" width=70 />
               <img class="walker" src="${sneal}" width=70 />
+            </div>
+            <div style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
+              <img src="${mushee}" width=80 />
+              <img src="${oddish}" width=80 />
             </div>
             <div id="resizable" style="display: none; position: absolute; pointer-events: auto; bottom: 1em; left: 1em; width: 12em; height: 6em;">
               <div id="resizable-interior" style="background-color: #ddf; overflow: scroll; width: 100%; height: 100%; border: 2px solid transparent;">
