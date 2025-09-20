@@ -121,26 +121,28 @@ export class EditableDashboard extends HTMLElement {
               <button id="toggle-fullscreen" style="pointer-events: auto"></button>
             </div>
             <div style="position: absolute; top: 1rem; right: 1rem;">
+              <button id="meet-gen-1" style="pointer-events: auto">Meet Gen 1</button>
+              <button id="meet-gen-2" style="pointer-events: auto">Meet Gen 2</button>
+              <button id="meet-gen-0" style="pointer-events: auto">Hide everyone</button>
+            </div>
+            <div style="position: absolute; top: 1rem; left: 1rem;">
               <button id="show-assets" style="pointer-events: auto">Assets</button>
               <button id="login" style="pointer-events: auto">Log in</button>
-              <button id="toggle-walkers" style="pointer-events: auto">Toggle walkers</button>
             </div>
           </div>
           <div id="dashboard" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 480px; height 200px;">
-            <div style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
-              <img src="${wigglytuff}" width=100 />
-            </div>
             <div id="clock" style="white-space:pre;">
             </div>
-            <div style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
-              <img class="walker" src="${daiki}" width=70 />
-              <img class="walker" src="${seal}" width=70 />
-              <img class="walker" src="${fuecoco}" width=70 />
-              <img class="walker" src="${cabbaggy}" width=70 />
-              <img class="walker" src="${guangdang}" width=70 />
-              <img class="walker" src="${sneal}" width=70 />
+            <div id="gen-1" class="gen1" style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
+              <img src="${daiki}" width=70 />
+              <img src="${seal}" width=70 />
+              <img src="${fuecoco}" width=70 />
+              <img src="${cabbaggy}" width=70 />
+              <img src="${guangdang}" width=70 />
+              <img src="${sneal}" width=70 />
             </div>
-            <div style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
+            <div id="gen-2" style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
+              <img src="${wigglytuff}" width=80 />
               <img src="${mushee}" width=80 />
               <img src="${oddish}" width=80 />
             </div>
@@ -271,26 +273,22 @@ export class EditableDashboard extends HTMLElement {
       }
     });
 
-    const toggleWalkersButton = root.getElementById("toggle-walkers");
-    if (!toggleWalkersButton) {
-      throw "toggleWalkersButton is null";
-    }
-    let walkersEnabled = true;
-    toggleWalkersButton.addEventListener("click", (event: MouseEvent) => {
-      if (event.target === toggleWalkersButton) {
-        event.preventDefault();
-        event.stopPropagation();
-        const walkers = root.querySelectorAll(".walker");
-        walkersEnabled = !walkersEnabled;
-        console.log(`XXX toggling: ${walkersEnabled}`)
-        for (const walker of walkers) {
-          if (walker instanceof HTMLElement) {
-            console.log(`XXX toggling walker: ${walkersEnabled}`)
-            walker.style.display = walkersEnabled ? "" : "none";
-          }
-        }
+    for (let i = 0; true; ++i) {
+      const meetGenIButton = root.getElementById(`meet-gen-${i}`);
+      if (!meetGenIButton) {
+        break;
       }
-    })
+      const x = i;
+      meetGenIButton.addEventListener("click", (event: MouseEvent) => {
+        if (event.target === meetGenIButton) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.showingGen = x;
+          this.updateCharacters();
+        }
+      })
+    }
+    this.updateCharacters();
 
     const loginButton = root.getElementById("login");
     if (!loginButton) {
@@ -480,4 +478,23 @@ export class EditableDashboard extends HTMLElement {
     _oldValue: string,
     _newValue: string,
   ) { }
+
+  private showingGen: number = 0;
+
+  updateCharacters() {
+    if (!this.shadowRoot) {
+      return;
+    }
+    for (let i = 1; true; ++i) {
+      const gen = this.shadowRoot.getElementById(`gen-${i}`);
+      if (!gen) {
+        break;
+      }
+      if (this.showingGen === i) {
+        gen.style.display = "";
+      } else {
+        gen.style.display = "none";
+      }
+    }
+  }
 }
