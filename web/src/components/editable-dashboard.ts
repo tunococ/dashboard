@@ -9,6 +9,7 @@ import sneal from "../../public/sneal.png";
 import wigglytuff from "../../public/Wigglytuff.png";
 import mushee from "../../public/Mushee.png";
 import oddish from "../../public/Oddish.png";
+import pooToast from "../../public/PooToast.png";
 import { MoveEvent, Mover } from "../modifiers/mover";
 import { ResizeEvent, Resizer } from "../modifiers/resizer";
 import { AssetLibrary, type AssetLibraryEvent } from "./asset-library";
@@ -145,6 +146,7 @@ export class EditableDashboard extends HTMLElement {
               <img src="${wigglytuff}" width=80 />
               <img src="${mushee}" width=80 />
               <img src="${oddish}" width=80 />
+              <img src="${pooToast}" width=80 />
             </div>
             <div id="resizable" style="display: none; position: absolute; pointer-events: auto; bottom: 1em; left: 1em; width: 12em; height: 6em;">
               <div id="resizable-interior" style="background-color: #ddf; overflow: scroll; width: 100%; height: 100%; border: 2px solid transparent;">
