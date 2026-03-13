@@ -10,6 +10,9 @@ import wigglytuff from "../../public/Wigglytuff.png";
 import mushee from "../../public/Mushee.png";
 import oddish from "../../public/Oddish.png";
 import pooToast from "../../public/PooToast.png";
+import roccy from "../../public/Roccy.png";
+import geese from "../../public/Geese.png";
+import facelandEastward from "../../public/FaceLand-EastWard.jpg";
 import { MoveEvent, Mover } from "../modifiers/mover";
 import { ResizeEvent, Resizer } from "../modifiers/resizer";
 import { AssetLibrary, type AssetLibraryEvent } from "./asset-library";
@@ -113,7 +116,7 @@ export class EditableDashboard extends HTMLElement {
           view-margin-bottom="-1000vh"
         >
           <div slot="background" id="background" style="position: relative; width: 100%; height: 100%;">
-            <img src="${faceland}" style="display: block; width:100%; height:100%; object-fit: cover; object-position: center;" />
+            <img id="background-image" src="${faceland}" style="display: block; width:100%; height:100%; object-fit: cover; object-position: center;" />
           </div>
           <div slot="overlay" id="overlay" style="position: relative; width: 100%; height: 100%;">
             <div style="position: absolute; bottom: 1rem; right: 1rem;">
@@ -121,10 +124,17 @@ export class EditableDashboard extends HTMLElement {
               <button id="zoom-to-fit" style="pointer-events: auto">Zoom to fit</button>
               <button id="toggle-fullscreen" style="pointer-events: auto"></button>
             </div>
-            <div style="position: absolute; top: 1rem; right: 1rem;">
-              <button id="meet-gen-1" style="pointer-events: auto">Meet Gen 1</button>
-              <button id="meet-gen-2" style="pointer-events: auto">Meet Gen 2</button>
-              <button id="meet-gen-0" style="pointer-events: auto">Hide everyone</button>
+            <div style="position: absolute; top: 1rem; right: 1rem; display: flex; flex-direction: column; gap: 0.1rem;">
+              <div style="display: flex; flex-direction: row; justify-content: flex-end; gap: 0.1rem;">
+                <button id="meet-gen-1" style="pointer-events: auto">Meet Gen 1</button>
+                <button id="meet-gen-2" style="pointer-events: auto">Meet Gen 2</button>
+                <button id="meet-gen-3" style="pointer-events: auto">Meet Gen 3</button>
+                <button id="meet-gen-0" style="pointer-events: auto">Hide everyone</button>
+              </div>
+              <div style="width: 100%; display: flex; flex-direction: row; justify-content: flex-end; gap: 0.1rem;">
+                <button id="background-image-1" style="pointer-events: auto">Center</button>
+                <button id="background-image-2" style="pointer-events: auto">Eastward</button>
+              </div>
             </div>
             <div style="position: absolute; top: 1rem; left: 1rem;">
               <button id="show-assets" style="pointer-events: auto">Assets</button>
@@ -147,6 +157,10 @@ export class EditableDashboard extends HTMLElement {
               <img src="${mushee}" width=80 />
               <img src="${oddish}" width=80 />
               <img src="${pooToast}" width=80 />
+            </div>
+            <div id="gen-3" style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
+              <img src="${roccy}" width=80 />
+              <img src="${geese}" width=80 />
             </div>
             <div id="resizable" style="display: none; position: absolute; pointer-events: auto; bottom: 1em; left: 1em; width: 12em; height: 6em;">
               <div id="resizable-interior" style="background-color: #ddf; overflow: scroll; width: 100%; height: 100%; border: 2px solid transparent;">
@@ -288,9 +302,25 @@ export class EditableDashboard extends HTMLElement {
           this.showingGen = x;
           this.updateCharacters();
         }
-      })
+      });
     }
     this.updateCharacters();
+
+    for (let i = 1; true; ++i) {
+      const backgroundImageButton = root.getElementById(`background-image-${i}`);
+      if (!backgroundImageButton) {
+        break;
+      }
+      const x = i;
+      backgroundImageButton.addEventListener("click", (event: MouseEvent) => {
+        if (event.target === backgroundImageButton) {
+          event.preventDefault();
+          event.stopPropagation();
+          this.showingBackgroundImage = x;
+          this.updateBackgroundImage();
+        }
+      });
+    }
 
     const loginButton = root.getElementById("login");
     if (!loginButton) {
@@ -496,6 +526,28 @@ export class EditableDashboard extends HTMLElement {
         gen.style.display = "";
       } else {
         gen.style.display = "none";
+      }
+    }
+  }
+
+  private showingBackgroundImage: number = 1;
+
+  updateBackgroundImage() {
+    if (!this.shadowRoot) {
+      return;
+    }
+    const backgroundImage = this.shadowRoot.getElementById("background-image") as HTMLImageElement;
+    if (!backgroundImage) {
+      return;
+    }
+    switch (this.showingBackgroundImage) {
+      case 1: {
+        backgroundImage.src = faceland;
+        break;
+      }
+      case 2: {
+        backgroundImage.src = facelandEastward;
+        break;
       }
     }
   }
